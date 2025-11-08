@@ -172,77 +172,51 @@ views:
                 }
       - type: grid
         cards:
-          - type: grid
-            columns: 8
-            square: false
-            card_mod:
-              style: |
-                :host {
-                  position: fixed;
-                  left: 50%;
-                  bottom: 24px;
-                  transform: translateX(-50%);
-                  width: min(80vw, 2048px);
-                  z-index: 1000;
-                }
-                ha-card {
-                  width: 100%;
-                  margin: 0 auto;
-                  border-radius: 20px;
-                  backdrop-filter: blur(8px);
-                  background: rgba(20, 24, 32, 0.75);
-                  box-shadow: 0 12px 32px rgba(0, 0, 0, 0.35);
-                  padding: 12px 8px 4px;
-                }
-            cards:
-              - type: button
-                name: Home
-                icon: mdi:home
-                tap_action:
-                  action: navigate
-                  navigation_path: home
-              - type: button
-                name: Wohnbereich
-                icon: mdi:sofa
-                tap_action:
-                  action: navigate
-                  navigation_path: wohnbereich
-              - type: button
-                name: Licht
-                icon: mdi:lightbulb-group
-                tap_action:
-                  action: navigate
-                  navigation_path: licht
-              - type: button
-                name: Musik
-                icon: mdi:music-circle
-                tap_action:
-                  action: navigate
-                  navigation_path: musik
-              - type: button
-                name: Kameras
-                icon: mdi:cctv
-                tap_action:
-                  action: navigate
-                  navigation_path: kameras
-              - type: button
-                name: Reinigung
-                icon: mdi:vacuum
-                tap_action:
-                  action: navigate
-                  navigation_path: reinigung
-              - type: button
-                name: 3D Drucker
-                icon: mdi:printer-3d
-                tap_action:
-                  action: navigate
-                  navigation_path: drucker
-              - type: button
-                name: Kalender
-                icon: mdi:calendar
-                tap_action:
-                  action: navigate
-                  navigation_path: kalender
+          - type: custom:bubble-card
+            card_type: horizontal-buttons-stack
+            style:
+              position: fixed
+              bottom: 20px
+              left: 50%
+              transform: translateX(-50%)
+              width: 80%
+              padding: 15px
+              padding-bottom: 20px
+              display: flex
+              justify-content: space-around
+              background: rgba(0, 0, 0, 0.3)
+              border-radius: 15px
+              z-index: 1000
+            1_link: /dashboard-smart-home-dashboard/home
+            1_name: Home
+            1_icon: mdi:home
+            2_link: /dashboard-smart-home-dashboard/wohnbereich
+            2_name: Wohnbereich
+            2_icon: mdi:sofa
+            3_link: /dashboard-smart-home-dashboard/licht
+            3_name: Licht
+            3_icon: mdi:lightbulb-group
+            4_link: /dashboard-smart-home-dashboard/musik
+            4_name: Musik
+            4_icon: mdi:music-circle
+            5_link: /dashboard-smart-home-dashboard/kameras
+            5_name: Kameras
+            5_icon: mdi:cctv
+            6_link: /dashboard-smart-home-dashboard/reinigung
+            6_name: Reinigung
+            6_icon: mdi:vacuum
+            7_link: /dashboard-smart-home-dashboard/drucker
+            7_name: 3D Drucker
+            7_icon: mdi:printer-3d
+            8_link: /dashboard-smart-home-dashboard/kalender
+            8_name: Kalender
+            8_icon: mdi:calendar
+            width_desktop: 80%
+            margin: 0px
+            highlight_current_view: true
+            hide_gradient: false
+            auto_order: false
+            rise_animation: true
 
   - title: Wohnbereich
     path: wohnbereich
@@ -328,77 +302,51 @@ views:
               box-shadow: none;
               min-height: 140px;
             }
-      - type: grid
-        columns: 8
-        square: false
-        card_mod:
-          style: |
-            :host {
-              position: fixed;
-              left: 50%;
-              bottom: 24px;
-              transform: translateX(-50%);
-              width: min(80vw, 2048px);
-              z-index: 1000;
-            }
-            ha-card {
-              width: 100%;
-              margin: 0 auto;
-              border-radius: 20px;
-              backdrop-filter: blur(8px);
-              background: rgba(20, 24, 32, 0.75);
-              box-shadow: 0 12px 32px rgba(0, 0, 0, 0.35);
-              padding: 12px 8px 4px;
-            }
-        cards:
-          - type: button
-            name: Home
-            icon: mdi:home
-            tap_action:
-              action: navigate
-              navigation_path: home
-          - type: button
-            name: Wohnbereich
-            icon: mdi:sofa
-            tap_action:
-              action: navigate
-              navigation_path: wohnbereich
-          - type: button
-            name: Licht
-            icon: mdi:lightbulb-group
-            tap_action:
-              action: navigate
-              navigation_path: licht
-          - type: button
-            name: Musik
-            icon: mdi:music-circle
-            tap_action:
-              action: navigate
-              navigation_path: musik
-          - type: button
-            name: Kameras
-            icon: mdi:cctv
-            tap_action:
-              action: navigate
-              navigation_path: kameras
-          - type: button
-            name: Reinigung
-            icon: mdi:vacuum
-            tap_action:
-              action: navigate
-              navigation_path: reinigung
-          - type: button
-            name: 3D Drucker
-            icon: mdi:printer-3d
-            tap_action:
-              action: navigate
-              navigation_path: drucker
-          - type: button
-            name: Kalender
-            icon: mdi:calendar
-            tap_action:
-              action: navigate
-              navigation_path: kalender
+      - type: custom:bubble-card
+        card_type: horizontal-buttons-stack
+        style:
+          position: fixed
+          bottom: 20px
+          left: 50%
+          transform: translateX(-50%)
+          width: 80%
+          padding: 15px
+          padding-bottom: 20px
+          display: flex
+          justify-content: space-around
+          background: rgba(0, 0, 0, 0.3)
+          border-radius: 15px
+          z-index: 1000
+        1_link: /dashboard-smart-home-dashboard/home
+        1_name: Home
+        1_icon: mdi:home
+        2_link: /dashboard-smart-home-dashboard/wohnbereich
+        2_name: Wohnbereich
+        2_icon: mdi:sofa
+        3_link: /dashboard-smart-home-dashboard/licht
+        3_name: Licht
+        3_icon: mdi:lightbulb-group
+        4_link: /dashboard-smart-home-dashboard/musik
+        4_name: Musik
+        4_icon: mdi:music-circle
+        5_link: /dashboard-smart-home-dashboard/kameras
+        5_name: Kameras
+        5_icon: mdi:cctv
+        6_link: /dashboard-smart-home-dashboard/reinigung
+        6_name: Reinigung
+        6_icon: mdi:vacuum
+        7_link: /dashboard-smart-home-dashboard/drucker
+        7_name: 3D Drucker
+        7_icon: mdi:printer-3d
+        8_link: /dashboard-smart-home-dashboard/kalender
+        8_name: Kalender
+        8_icon: mdi:calendar
+        width_desktop: 80%
+        margin: 0px
+        highlight_current_view: true
+        hide_gradient: false
+        auto_order: false
+        rise_animation: true
 
   - title: Beleuchtung
     path: licht
@@ -505,77 +453,51 @@ views:
               box-shadow: none;
               min-height: 140px;
             }
-      - type: grid
-        columns: 8
-        square: false
-        card_mod:
-          style: |
-            :host {
-              position: fixed;
-              left: 50%;
-              bottom: 24px;
-              transform: translateX(-50%);
-              width: min(80vw, 2048px);
-              z-index: 1000;
-            }
-            ha-card {
-              width: 100%;
-              margin: 0 auto;
-              border-radius: 20px;
-              backdrop-filter: blur(8px);
-              background: rgba(20, 24, 32, 0.75);
-              box-shadow: 0 12px 32px rgba(0, 0, 0, 0.35);
-              padding: 12px 8px 4px;
-            }
-        cards:
-          - type: button
-            name: Home
-            icon: mdi:home
-            tap_action:
-              action: navigate
-              navigation_path: home
-          - type: button
-            name: Wohnbereich
-            icon: mdi:sofa
-            tap_action:
-              action: navigate
-              navigation_path: wohnbereich
-          - type: button
-            name: Licht
-            icon: mdi:lightbulb-group
-            tap_action:
-              action: navigate
-              navigation_path: licht
-          - type: button
-            name: Musik
-            icon: mdi:music-circle
-            tap_action:
-              action: navigate
-              navigation_path: musik
-          - type: button
-            name: Kameras
-            icon: mdi:cctv
-            tap_action:
-              action: navigate
-              navigation_path: kameras
-          - type: button
-            name: Reinigung
-            icon: mdi:vacuum
-            tap_action:
-              action: navigate
-              navigation_path: reinigung
-          - type: button
-            name: 3D Drucker
-            icon: mdi:printer-3d
-            tap_action:
-              action: navigate
-              navigation_path: drucker
-          - type: button
-            name: Kalender
-            icon: mdi:calendar
-            tap_action:
-              action: navigate
-              navigation_path: kalender
+      - type: custom:bubble-card
+        card_type: horizontal-buttons-stack
+        style:
+          position: fixed
+          bottom: 20px
+          left: 50%
+          transform: translateX(-50%)
+          width: 80%
+          padding: 15px
+          padding-bottom: 20px
+          display: flex
+          justify-content: space-around
+          background: rgba(0, 0, 0, 0.3)
+          border-radius: 15px
+          z-index: 1000
+        1_link: /dashboard-smart-home-dashboard/home
+        1_name: Home
+        1_icon: mdi:home
+        2_link: /dashboard-smart-home-dashboard/wohnbereich
+        2_name: Wohnbereich
+        2_icon: mdi:sofa
+        3_link: /dashboard-smart-home-dashboard/licht
+        3_name: Licht
+        3_icon: mdi:lightbulb-group
+        4_link: /dashboard-smart-home-dashboard/musik
+        4_name: Musik
+        4_icon: mdi:music-circle
+        5_link: /dashboard-smart-home-dashboard/kameras
+        5_name: Kameras
+        5_icon: mdi:cctv
+        6_link: /dashboard-smart-home-dashboard/reinigung
+        6_name: Reinigung
+        6_icon: mdi:vacuum
+        7_link: /dashboard-smart-home-dashboard/drucker
+        7_name: 3D Drucker
+        7_icon: mdi:printer-3d
+        8_link: /dashboard-smart-home-dashboard/kalender
+        8_name: Kalender
+        8_icon: mdi:calendar
+        width_desktop: 80%
+        margin: 0px
+        highlight_current_view: true
+        hide_gradient: false
+        auto_order: false
+        rise_animation: true
 
   - title: Musik
     path: musik
@@ -670,77 +592,51 @@ views:
               box-shadow: none;
               min-height: 140px;
             }
-      - type: grid
-        columns: 8
-        square: false
-        card_mod:
-          style: |
-            :host {
-              position: fixed;
-              left: 50%;
-              bottom: 24px;
-              transform: translateX(-50%);
-              width: min(80vw, 2048px);
-              z-index: 1000;
-            }
-            ha-card {
-              width: 100%;
-              margin: 0 auto;
-              border-radius: 20px;
-              backdrop-filter: blur(8px);
-              background: rgba(20, 24, 32, 0.75);
-              box-shadow: 0 12px 32px rgba(0, 0, 0, 0.35);
-              padding: 12px 8px 4px;
-            }
-        cards:
-          - type: button
-            name: Home
-            icon: mdi:home
-            tap_action:
-              action: navigate
-              navigation_path: home
-          - type: button
-            name: Wohnbereich
-            icon: mdi:sofa
-            tap_action:
-              action: navigate
-              navigation_path: wohnbereich
-          - type: button
-            name: Licht
-            icon: mdi:lightbulb-group
-            tap_action:
-              action: navigate
-              navigation_path: licht
-          - type: button
-            name: Musik
-            icon: mdi:music-circle
-            tap_action:
-              action: navigate
-              navigation_path: musik
-          - type: button
-            name: Kameras
-            icon: mdi:cctv
-            tap_action:
-              action: navigate
-              navigation_path: kameras
-          - type: button
-            name: Reinigung
-            icon: mdi:vacuum
-            tap_action:
-              action: navigate
-              navigation_path: reinigung
-          - type: button
-            name: 3D Drucker
-            icon: mdi:printer-3d
-            tap_action:
-              action: navigate
-              navigation_path: drucker
-          - type: button
-            name: Kalender
-            icon: mdi:calendar
-            tap_action:
-              action: navigate
-              navigation_path: kalender
+      - type: custom:bubble-card
+        card_type: horizontal-buttons-stack
+        style:
+          position: fixed
+          bottom: 20px
+          left: 50%
+          transform: translateX(-50%)
+          width: 80%
+          padding: 15px
+          padding-bottom: 20px
+          display: flex
+          justify-content: space-around
+          background: rgba(0, 0, 0, 0.3)
+          border-radius: 15px
+          z-index: 1000
+        1_link: /dashboard-smart-home-dashboard/home
+        1_name: Home
+        1_icon: mdi:home
+        2_link: /dashboard-smart-home-dashboard/wohnbereich
+        2_name: Wohnbereich
+        2_icon: mdi:sofa
+        3_link: /dashboard-smart-home-dashboard/licht
+        3_name: Licht
+        3_icon: mdi:lightbulb-group
+        4_link: /dashboard-smart-home-dashboard/musik
+        4_name: Musik
+        4_icon: mdi:music-circle
+        5_link: /dashboard-smart-home-dashboard/kameras
+        5_name: Kameras
+        5_icon: mdi:cctv
+        6_link: /dashboard-smart-home-dashboard/reinigung
+        6_name: Reinigung
+        6_icon: mdi:vacuum
+        7_link: /dashboard-smart-home-dashboard/drucker
+        7_name: 3D Drucker
+        7_icon: mdi:printer-3d
+        8_link: /dashboard-smart-home-dashboard/kalender
+        8_name: Kalender
+        8_icon: mdi:calendar
+        width_desktop: 80%
+        margin: 0px
+        highlight_current_view: true
+        hide_gradient: false
+        auto_order: false
+        rise_animation: true
 
   - title: Kameras
     path: kameras
@@ -779,77 +675,51 @@ views:
               box-shadow: none;
               min-height: 140px;
             }
-      - type: grid
-        columns: 8
-        square: false
-        card_mod:
-          style: |
-            :host {
-              position: fixed;
-              left: 50%;
-              bottom: 24px;
-              transform: translateX(-50%);
-              width: min(80vw, 2048px);
-              z-index: 1000;
-            }
-            ha-card {
-              width: 100%;
-              margin: 0 auto;
-              border-radius: 20px;
-              backdrop-filter: blur(8px);
-              background: rgba(20, 24, 32, 0.75);
-              box-shadow: 0 12px 32px rgba(0, 0, 0, 0.35);
-              padding: 12px 8px 4px;
-            }
-        cards:
-          - type: button
-            name: Home
-            icon: mdi:home
-            tap_action:
-              action: navigate
-              navigation_path: home
-          - type: button
-            name: Wohnbereich
-            icon: mdi:sofa
-            tap_action:
-              action: navigate
-              navigation_path: wohnbereich
-          - type: button
-            name: Licht
-            icon: mdi:lightbulb-group
-            tap_action:
-              action: navigate
-              navigation_path: licht
-          - type: button
-            name: Musik
-            icon: mdi:music-circle
-            tap_action:
-              action: navigate
-              navigation_path: musik
-          - type: button
-            name: Kameras
-            icon: mdi:cctv
-            tap_action:
-              action: navigate
-              navigation_path: kameras
-          - type: button
-            name: Reinigung
-            icon: mdi:vacuum
-            tap_action:
-              action: navigate
-              navigation_path: reinigung
-          - type: button
-            name: 3D Drucker
-            icon: mdi:printer-3d
-            tap_action:
-              action: navigate
-              navigation_path: drucker
-          - type: button
-            name: Kalender
-            icon: mdi:calendar
-            tap_action:
-              action: navigate
-              navigation_path: kalender
+      - type: custom:bubble-card
+        card_type: horizontal-buttons-stack
+        style:
+          position: fixed
+          bottom: 20px
+          left: 50%
+          transform: translateX(-50%)
+          width: 80%
+          padding: 15px
+          padding-bottom: 20px
+          display: flex
+          justify-content: space-around
+          background: rgba(0, 0, 0, 0.3)
+          border-radius: 15px
+          z-index: 1000
+        1_link: /dashboard-smart-home-dashboard/home
+        1_name: Home
+        1_icon: mdi:home
+        2_link: /dashboard-smart-home-dashboard/wohnbereich
+        2_name: Wohnbereich
+        2_icon: mdi:sofa
+        3_link: /dashboard-smart-home-dashboard/licht
+        3_name: Licht
+        3_icon: mdi:lightbulb-group
+        4_link: /dashboard-smart-home-dashboard/musik
+        4_name: Musik
+        4_icon: mdi:music-circle
+        5_link: /dashboard-smart-home-dashboard/kameras
+        5_name: Kameras
+        5_icon: mdi:cctv
+        6_link: /dashboard-smart-home-dashboard/reinigung
+        6_name: Reinigung
+        6_icon: mdi:vacuum
+        7_link: /dashboard-smart-home-dashboard/drucker
+        7_name: 3D Drucker
+        7_icon: mdi:printer-3d
+        8_link: /dashboard-smart-home-dashboard/kalender
+        8_name: Kalender
+        8_icon: mdi:calendar
+        width_desktop: 80%
+        margin: 0px
+        highlight_current_view: true
+        hide_gradient: false
+        auto_order: false
+        rise_animation: true
 
   - title: Reinigung
     path: reinigung
@@ -958,77 +828,51 @@ views:
               box-shadow: none;
               min-height: 140px;
             }
-      - type: grid
-        columns: 8
-        square: false
-        card_mod:
-          style: |
-            :host {
-              position: fixed;
-              left: 50%;
-              bottom: 24px;
-              transform: translateX(-50%);
-              width: min(80vw, 2048px);
-              z-index: 1000;
-            }
-            ha-card {
-              width: 100%;
-              margin: 0 auto;
-              border-radius: 20px;
-              backdrop-filter: blur(8px);
-              background: rgba(20, 24, 32, 0.75);
-              box-shadow: 0 12px 32px rgba(0, 0, 0, 0.35);
-              padding: 12px 8px 4px;
-            }
-        cards:
-          - type: button
-            name: Home
-            icon: mdi:home
-            tap_action:
-              action: navigate
-              navigation_path: home
-          - type: button
-            name: Wohnbereich
-            icon: mdi:sofa
-            tap_action:
-              action: navigate
-              navigation_path: wohnbereich
-          - type: button
-            name: Licht
-            icon: mdi:lightbulb-group
-            tap_action:
-              action: navigate
-              navigation_path: licht
-          - type: button
-            name: Musik
-            icon: mdi:music-circle
-            tap_action:
-              action: navigate
-              navigation_path: musik
-          - type: button
-            name: Kameras
-            icon: mdi:cctv
-            tap_action:
-              action: navigate
-              navigation_path: kameras
-          - type: button
-            name: Reinigung
-            icon: mdi:vacuum
-            tap_action:
-              action: navigate
-              navigation_path: reinigung
-          - type: button
-            name: 3D Drucker
-            icon: mdi:printer-3d
-            tap_action:
-              action: navigate
-              navigation_path: drucker
-          - type: button
-            name: Kalender
-            icon: mdi:calendar
-            tap_action:
-              action: navigate
-              navigation_path: kalender
+      - type: custom:bubble-card
+        card_type: horizontal-buttons-stack
+        style:
+          position: fixed
+          bottom: 20px
+          left: 50%
+          transform: translateX(-50%)
+          width: 80%
+          padding: 15px
+          padding-bottom: 20px
+          display: flex
+          justify-content: space-around
+          background: rgba(0, 0, 0, 0.3)
+          border-radius: 15px
+          z-index: 1000
+        1_link: /dashboard-smart-home-dashboard/home
+        1_name: Home
+        1_icon: mdi:home
+        2_link: /dashboard-smart-home-dashboard/wohnbereich
+        2_name: Wohnbereich
+        2_icon: mdi:sofa
+        3_link: /dashboard-smart-home-dashboard/licht
+        3_name: Licht
+        3_icon: mdi:lightbulb-group
+        4_link: /dashboard-smart-home-dashboard/musik
+        4_name: Musik
+        4_icon: mdi:music-circle
+        5_link: /dashboard-smart-home-dashboard/kameras
+        5_name: Kameras
+        5_icon: mdi:cctv
+        6_link: /dashboard-smart-home-dashboard/reinigung
+        6_name: Reinigung
+        6_icon: mdi:vacuum
+        7_link: /dashboard-smart-home-dashboard/drucker
+        7_name: 3D Drucker
+        7_icon: mdi:printer-3d
+        8_link: /dashboard-smart-home-dashboard/kalender
+        8_name: Kalender
+        8_icon: mdi:calendar
+        width_desktop: 80%
+        margin: 0px
+        highlight_current_view: true
+        hide_gradient: false
+        auto_order: false
+        rise_animation: true
 
   - title: 3D Drucker
     path: drucker
@@ -1194,77 +1038,51 @@ views:
                 }
       - type: grid
         cards:
-          - type: grid
-            columns: 8
-            square: false
-            card_mod:
-              style: |
-                :host {
-                  position: fixed;
-                  left: 50%;
-                  bottom: 24px;
-                  transform: translateX(-50%);
-                  width: min(80vw, 2048px);
-                  z-index: 1000;
-                }
-                ha-card {
-                  width: 100%;
-                  margin: 0 auto;
-                  border-radius: 20px;
-                  backdrop-filter: blur(8px);
-                  background: rgba(20, 24, 32, 0.75);
-                  box-shadow: 0 12px 32px rgba(0, 0, 0, 0.35);
-                  padding: 12px 8px 4px;
-                }
-            cards:
-              - type: button
-                name: Home
-                icon: mdi:home
-                tap_action:
-                  action: navigate
-                  navigation_path: home
-              - type: button
-                name: Wohnbereich
-                icon: mdi:sofa
-                tap_action:
-                  action: navigate
-                  navigation_path: wohnbereich
-              - type: button
-                name: Licht
-                icon: mdi:lightbulb-group
-                tap_action:
-                  action: navigate
-                  navigation_path: licht
-              - type: button
-                name: Musik
-                icon: mdi:music-circle
-                tap_action:
-                  action: navigate
-                  navigation_path: musik
-              - type: button
-                name: Kameras
-                icon: mdi:cctv
-                tap_action:
-                  action: navigate
-                  navigation_path: kameras
-              - type: button
-                name: Reinigung
-                icon: mdi:vacuum
-                tap_action:
-                  action: navigate
-                  navigation_path: reinigung
-              - type: button
-                name: 3D Drucker
-                icon: mdi:printer-3d
-                tap_action:
-                  action: navigate
-                  navigation_path: drucker
-              - type: button
-                name: Kalender
-                icon: mdi:calendar
-                tap_action:
-                  action: navigate
-                  navigation_path: kalender
+          - type: custom:bubble-card
+            card_type: horizontal-buttons-stack
+            style:
+              position: fixed
+              bottom: 20px
+              left: 50%
+              transform: translateX(-50%)
+              width: 80%
+              padding: 15px
+              padding-bottom: 20px
+              display: flex
+              justify-content: space-around
+              background: rgba(0, 0, 0, 0.3)
+              border-radius: 15px
+              z-index: 1000
+            1_link: /dashboard-smart-home-dashboard/home
+            1_name: Home
+            1_icon: mdi:home
+            2_link: /dashboard-smart-home-dashboard/wohnbereich
+            2_name: Wohnbereich
+            2_icon: mdi:sofa
+            3_link: /dashboard-smart-home-dashboard/licht
+            3_name: Licht
+            3_icon: mdi:lightbulb-group
+            4_link: /dashboard-smart-home-dashboard/musik
+            4_name: Musik
+            4_icon: mdi:music-circle
+            5_link: /dashboard-smart-home-dashboard/kameras
+            5_name: Kameras
+            5_icon: mdi:cctv
+            6_link: /dashboard-smart-home-dashboard/reinigung
+            6_name: Reinigung
+            6_icon: mdi:vacuum
+            7_link: /dashboard-smart-home-dashboard/drucker
+            7_name: 3D Drucker
+            7_icon: mdi:printer-3d
+            8_link: /dashboard-smart-home-dashboard/kalender
+            8_name: Kalender
+            8_icon: mdi:calendar
+            width_desktop: 80%
+            margin: 0px
+            highlight_current_view: true
+            hide_gradient: false
+            auto_order: false
+            rise_animation: true
 
   - title: Kalender
     path: kalender
@@ -1309,77 +1127,51 @@ views:
               box-shadow: none;
               min-height: 140px;
             }
-      - type: grid
-        columns: 8
-        square: false
-        card_mod:
-          style: |
-            :host {
-              position: fixed;
-              left: 50%;
-              bottom: 24px;
-              transform: translateX(-50%);
-              width: min(80vw, 2048px);
-              z-index: 1000;
-            }
-            ha-card {
-              width: 100%;
-              margin: 0 auto;
-              border-radius: 20px;
-              backdrop-filter: blur(8px);
-              background: rgba(20, 24, 32, 0.75);
-              box-shadow: 0 12px 32px rgba(0, 0, 0, 0.35);
-              padding: 12px 8px 4px;
-            }
-        cards:
-          - type: button
-            name: Home
-            icon: mdi:home
-            tap_action:
-              action: navigate
-              navigation_path: home
-          - type: button
-            name: Wohnbereich
-            icon: mdi:sofa
-            tap_action:
-              action: navigate
-              navigation_path: wohnbereich
-          - type: button
-            name: Licht
-            icon: mdi:lightbulb-group
-            tap_action:
-              action: navigate
-              navigation_path: licht
-          - type: button
-            name: Musik
-            icon: mdi:music-circle
-            tap_action:
-              action: navigate
-              navigation_path: musik
-          - type: button
-            name: Kameras
-            icon: mdi:cctv
-            tap_action:
-              action: navigate
-              navigation_path: kameras
-          - type: button
-            name: Reinigung
-            icon: mdi:vacuum
-            tap_action:
-              action: navigate
-              navigation_path: reinigung
-          - type: button
-            name: 3D Drucker
-            icon: mdi:printer-3d
-            tap_action:
-              action: navigate
-              navigation_path: drucker
-          - type: button
-            name: Kalender
-            icon: mdi:calendar
-            tap_action:
-              action: navigate
-              navigation_path: kalender
+      - type: custom:bubble-card
+        card_type: horizontal-buttons-stack
+        style:
+          position: fixed
+          bottom: 20px
+          left: 50%
+          transform: translateX(-50%)
+          width: 80%
+          padding: 15px
+          padding-bottom: 20px
+          display: flex
+          justify-content: space-around
+          background: rgba(0, 0, 0, 0.3)
+          border-radius: 15px
+          z-index: 1000
+        1_link: /dashboard-smart-home-dashboard/home
+        1_name: Home
+        1_icon: mdi:home
+        2_link: /dashboard-smart-home-dashboard/wohnbereich
+        2_name: Wohnbereich
+        2_icon: mdi:sofa
+        3_link: /dashboard-smart-home-dashboard/licht
+        3_name: Licht
+        3_icon: mdi:lightbulb-group
+        4_link: /dashboard-smart-home-dashboard/musik
+        4_name: Musik
+        4_icon: mdi:music-circle
+        5_link: /dashboard-smart-home-dashboard/kameras
+        5_name: Kameras
+        5_icon: mdi:cctv
+        6_link: /dashboard-smart-home-dashboard/reinigung
+        6_name: Reinigung
+        6_icon: mdi:vacuum
+        7_link: /dashboard-smart-home-dashboard/drucker
+        7_name: 3D Drucker
+        7_icon: mdi:printer-3d
+        8_link: /dashboard-smart-home-dashboard/kalender
+        8_name: Kalender
+        8_icon: mdi:calendar
+        width_desktop: 80%
+        margin: 0px
+        highlight_current_view: true
+        hide_gradient: false
+        auto_order: false
+        rise_animation: true
 
   - title: Tonie's
     path: tonie
@@ -1429,74 +1221,48 @@ views:
               box-shadow: none;
               min-height: 140px;
             }
-      - type: grid
-        columns: 8
-        square: false
-        card_mod:
-          style: |
-            :host {
-              position: fixed;
-              left: 50%;
-              bottom: 24px;
-              transform: translateX(-50%);
-              width: min(80vw, 2048px);
-              z-index: 1000;
-            }
-            ha-card {
-              width: 100%;
-              margin: 0 auto;
-              border-radius: 20px;
-              backdrop-filter: blur(8px);
-              background: rgba(20, 24, 32, 0.75);
-              box-shadow: 0 12px 32px rgba(0, 0, 0, 0.35);
-              padding: 12px 8px 4px;
-            }
-        cards:
-          - type: button
-            name: Home
-            icon: mdi:home
-            tap_action:
-              action: navigate
-              navigation_path: home
-          - type: button
-            name: Wohnbereich
-            icon: mdi:sofa
-            tap_action:
-              action: navigate
-              navigation_path: wohnbereich
-          - type: button
-            name: Licht
-            icon: mdi:lightbulb-group
-            tap_action:
-              action: navigate
-              navigation_path: licht
-          - type: button
-            name: Musik
-            icon: mdi:music-circle
-            tap_action:
-              action: navigate
-              navigation_path: musik
-          - type: button
-            name: Kameras
-            icon: mdi:cctv
-            tap_action:
-              action: navigate
-              navigation_path: kameras
-          - type: button
-            name: Reinigung
-            icon: mdi:vacuum
-            tap_action:
-              action: navigate
-              navigation_path: reinigung
-          - type: button
-            name: 3D Drucker
-            icon: mdi:printer-3d
-            tap_action:
-              action: navigate
-              navigation_path: drucker
-          - type: button
-            name: Kalender
-            icon: mdi:calendar
-            tap_action:
-              action: navigate
-              navigation_path: kalender
+      - type: custom:bubble-card
+        card_type: horizontal-buttons-stack
+        style:
+          position: fixed
+          bottom: 20px
+          left: 50%
+          transform: translateX(-50%)
+          width: 80%
+          padding: 15px
+          padding-bottom: 20px
+          display: flex
+          justify-content: space-around
+          background: rgba(0, 0, 0, 0.3)
+          border-radius: 15px
+          z-index: 1000
+        1_link: /dashboard-smart-home-dashboard/home
+        1_name: Home
+        1_icon: mdi:home
+        2_link: /dashboard-smart-home-dashboard/wohnbereich
+        2_name: Wohnbereich
+        2_icon: mdi:sofa
+        3_link: /dashboard-smart-home-dashboard/licht
+        3_name: Licht
+        3_icon: mdi:lightbulb-group
+        4_link: /dashboard-smart-home-dashboard/musik
+        4_name: Musik
+        4_icon: mdi:music-circle
+        5_link: /dashboard-smart-home-dashboard/kameras
+        5_name: Kameras
+        5_icon: mdi:cctv
+        6_link: /dashboard-smart-home-dashboard/reinigung
+        6_name: Reinigung
+        6_icon: mdi:vacuum
+        7_link: /dashboard-smart-home-dashboard/drucker
+        7_name: 3D Drucker
+        7_icon: mdi:printer-3d
+        8_link: /dashboard-smart-home-dashboard/kalender
+        8_name: Kalender
+        8_icon: mdi:calendar
+        width_desktop: 80%
+        margin: 0px
+        highlight_current_view: true
+        hide_gradient: false
+        auto_order: false
+        rise_animation: true
