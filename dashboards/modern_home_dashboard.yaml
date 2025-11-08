@@ -1,37 +1,118 @@
-title: Neo Habitat
-icon: mdi:home-automation
+title: Smart Home Dashboard
+theme: ios-dark-mode-blue-red
 views:
-  - title: Übersicht
-    path: overview
-    icon: mdi:view-dashboard
-    cards:
-      - type: vertical-stack
+  - title: Home
+    path: home
+    icon: mdi:home
+    type: sections
+    layout:
+      grid-template-rows: 1fr
+      grid-template-columns: 1fr
+      grid-template-areas:
+        - content
+    cards: []
+    sections:
+      - type: grid
+        cards:
+          - show_current: true
+            show_forecast: false
+            type: weather-forecast
+            entity: weather.forecast_home_2
+            forecast_type: daily
+            grid_options:
+              columns: 12
+              rows: 2
+          - type: horizontal-stack
+            cards:
+              - type: custom:list-card
+                entity: sensor.blicknews
+                title: ''
+                feed_attribute: entries
+                row_limit: 3
+                sort_by: published
+                sort_desc: true
+                style:
+                  width: 50%
+                  max-width: 50%
+                  align-self: center
+                card_mod:
+                  style: |
+                    ha-card {
+                      background: transparent !important;
+                      box-shadow: none !important;
+                    }
+                    table {
+                      background: transparent !important;
+                    }
+                    tbody {
+                      background: transparent !important;
+                    }
+                    tr {
+                      background: transparent !important;
+                    }
+                    td {
+                      background: transparent !important;
+                    }
+                columns:
+                  - title: ''
+                    field: image
+                    type: image
+                    add_link: link
+                    width: 177
+                    height: 100
+                  - title: ''
+                    field: title
+                    style:
+                      - white-space: normal
+                      - font-size: 15px
+                      - padding: 15px
+                      - text-align: left
+            grid_options:
+              columns: 18
+              rows: auto
+      - type: grid
+        cards:
+          - type: horizontal-stack
+            cards:
+              - type: todo-list
+                entity: todo.familie_balsiger
+                theme: ios-dark-mode-dark-blue-alternative
+                title: Aufgaben
+                filter: active
+                card_mod:
+                  style: |
+                    ha-card {
+                      max-height: 600px;
+                      overflow-y: scroll;
+                      scrollbar-width: none;
+                    }
+                    ha-card::-webkit-scrollbar {
+                      display: none;
+                    }
+              - type: todo-list
+                entity: todo.zuhause
+                theme: ios-dark-mode-dark-blue-alternative
+                title: Einkaufen
+                filter: active
+                card_mod:
+                  style: |
+                    ha-card {
+                      max-height: 600px;
+                      overflow-y: scroll;
+                      scrollbar-width: none;
+                    }
+                    ha-card::-webkit-scrollbar {
+                      display: none;
+                    }
+      - type: grid
         cards:
           - type: grid
             square: false
-            columns: 2
-            cards:
-              - type: weather-forecast
-                entity: weather.forecast_home_2
-              - type: glance
-                title: Klima Highlights
-                entities:
-                  - entity: sensor.sensor_wohnzimmer_temperature
-                    name: Wohnzimmer °C
-                  - entity: sensor.sensor_korridor_temperature
-                    name: Korridor °C
-                  - entity: sensor.aarlo_humidity_kinderzimmer
-                    name: Kinderzimmer %
-                  - entity: sensor.terra_pad_1201_light_sensor
-                    name: Tablet Lux
-          - type: grid
-            title: Schnelle Aktionen
             columns: 3
-            square: false
+            title: Schnellzugriff Szenen
             cards:
               - type: button
-                entity: scene.heimkommen_mit_musik
-                name: Heimkommen + Musik
+                name: Heimkommen
                 icon: mdi:home-heart
                 tap_action:
                   action: call-service
@@ -39,42 +120,36 @@ views:
                   data:
                     entity_id: scene.heimkommen_mit_musik
               - type: button
-                entity: scene.gehen
-                name: Haus verlassen
-                icon: mdi:exit-run
+                name: Gute Nacht
+                icon: mdi:weather-night
                 tap_action:
                   action: call-service
                   service: scene.turn_on
                   data:
-                    entity_id: scene.gehen
+                    entity_id: scene.gute_nacht
               - type: button
-                entity: vacuum.dreame
-                name: Reinigung Starten
-                icon: mdi:robot-vacuum
+                name: Party
+                icon: mdi:party-popper
                 tap_action:
                   action: call-service
-                  service: vacuum.start
+                  service: scene.turn_on
                   data:
-                    entity_id: vacuum.dreame
-                hold_action:
-                  action: call-service
-                  service: vacuum.return_to_base
-                  data:
-                    entity_id: vacuum.dreame
+                    entity_id: scene.party_modus
           - type: grid
-            title: Aktive Medien
-            columns: 2
             square: false
+            columns: 2
+            title: Aktive Medien
             cards:
               - type: media-control
                 entity: media_player.spotify_dominik_balsiger
               - type: media-control
                 entity: media_player.wohnzimmer
-      - type: markdown
-        title: Jetzt läuft
-        content: |
-          {% if is_state('media_player.spotify_dominik_balsiger', 'playing') %}
-          **Spotify** · {{ state_attr('media_player.spotify_dominik_balsiger', 'media_title') }} — {{ state_attr('media_player.spotify_dominik_balsiger', 'media_artist') }}
+      - type: grid
+        cards:
+          - type: markdown
+            content: |
+              {% if is_state('media_player.spotify_dominik_balsiger', 'playing') %}
+              **Spotify** · {{ state_attr('media_player.spotify_dominik_balsiger', 'media_title') }} — {{ state_attr('media_player.spotify_dominik_balsiger', 'media_artist') }}
               {% else %}
               **Spotify** ist bereit für deine nächste Session.
               {% endif %}
@@ -84,72 +159,90 @@ views:
               {% else %}
               **Wohnzimmer Lautsprecher** warten auf eine Auswahl.
               {% endif %}
-      - type: markdown
-        content: " "
-        card_mod:
-          style: |
-            ha-card {
-              background: transparent;
-              box-shadow: none;
-              min-height: 120px;
-            }
       - type: grid
-        square: false
-        columns: 6
-        card_mod:
-          style: |
-            :host {
-              position: fixed;
-              left: 50%;
-              bottom: 20px;
-              transform: translateX(-50%);
-              width: min(80vw, 1200px);
-              z-index: 1000;
-            }
-            ha-card {
-              width: 100%;
-              margin: 0 auto;
-              border-radius: 24px;
-              box-shadow: var(--ha-card-box-shadow, 0px 6px 16px rgba(0, 0, 0, 0.2));
-              padding-bottom: 4px;
-            }
         cards:
-          - type: button
-            name: Übersicht
-            icon: mdi:view-dashboard
-            tap_action:
-              action: navigate
-              navigation_path: overview
-          - type: button
-            name: Wohnbereich
-            icon: mdi:sofa
-            tap_action:
-              action: navigate
-              navigation_path: wohnbereich
-          - type: button
-            name: Licht
-            icon: mdi:lightbulb-group
-            tap_action:
-              action: navigate
-              navigation_path: licht
-          - type: button
-            name: Musik
-            icon: mdi:music-circle
-            tap_action:
-              action: navigate
-              navigation_path: musik
-          - type: button
-            name: Kameras
-            icon: mdi:cctv
-            tap_action:
-              action: navigate
-              navigation_path: kameras
-          - type: button
-            name: Sensoren
-            icon: mdi:chart-box
-            tap_action:
-              action: navigate
-              navigation_path: sensoren
+          - type: markdown
+            content: " "
+            card_mod:
+              style: |
+                ha-card {
+                  background: transparent;
+                  box-shadow: none;
+                  min-height: 140px;
+                }
+      - type: grid
+        cards:
+          - type: grid
+            columns: 8
+            square: false
+            card_mod:
+              style: |
+                :host {
+                  position: fixed;
+                  left: 50%;
+                  bottom: 24px;
+                  transform: translateX(-50%);
+                  width: min(80vw, 2048px);
+                  z-index: 1000;
+                }
+                ha-card {
+                  width: 100%;
+                  margin: 0 auto;
+                  border-radius: 20px;
+                  backdrop-filter: blur(8px);
+                  background: rgba(20, 24, 32, 0.75);
+                  box-shadow: 0 12px 32px rgba(0, 0, 0, 0.35);
+                  padding: 12px 8px 4px;
+                }
+            cards:
+              - type: button
+                name: Home
+                icon: mdi:home
+                tap_action:
+                  action: navigate
+                  navigation_path: home
+              - type: button
+                name: Wohnbereich
+                icon: mdi:sofa
+                tap_action:
+                  action: navigate
+                  navigation_path: wohnbereich
+              - type: button
+                name: Licht
+                icon: mdi:lightbulb-group
+                tap_action:
+                  action: navigate
+                  navigation_path: licht
+              - type: button
+                name: Musik
+                icon: mdi:music-circle
+                tap_action:
+                  action: navigate
+                  navigation_path: musik
+              - type: button
+                name: Kameras
+                icon: mdi:cctv
+                tap_action:
+                  action: navigate
+                  navigation_path: kameras
+              - type: button
+                name: Reinigung
+                icon: mdi:vacuum
+                tap_action:
+                  action: navigate
+                  navigation_path: reinigung
+              - type: button
+                name: 3D Drucker
+                icon: mdi:printer-3d
+                tap_action:
+                  action: navigate
+                  navigation_path: drucker
+              - type: button
+                name: Kalender
+                icon: mdi:calendar
+                tap_action:
+                  action: navigate
+                  navigation_path: kalender
 
   - title: Wohnbereich
     path: wohnbereich
@@ -162,96 +255,69 @@ views:
             columns: 2
             square: false
             cards:
-              - type: light
+              - type: custom:mushroom-light-card
                 entity: light.wohnzimmer
-              - type: light
+                name: Wohnzimmer
+                show_brightness_control: true
+                use_light_color: true
+              - type: custom:mushroom-light-card
                 entity: light.kuche
-              - type: light
+                name: Küche
+                show_brightness_control: true
+                use_light_color: true
+              - type: custom:mushroom-light-card
                 entity: light.esszimmer
-              - type: light
+                name: Esszimmer
+                show_brightness_control: true
+                use_light_color: true
+              - type: custom:mushroom-light-card
                 entity: light.bar
-              - type: light
-                entity: light.salontisch
-              - type: light
-                entity: light.vitrine_links
+                name: Bar
+                show_brightness_control: true
+                use_light_color: true
           - type: grid
-            title: Lieblings-Szenen
+            title: Szenen
             columns: 3
             square: false
             cards:
               - type: button
-                name: Wohnzimmer Relax
+                name: Relax
                 icon: mdi:white-balance-iridescent
                 tap_action:
                   action: call-service
                   service: scene.turn_on
-                  data:
+                  target:
                     entity_id: scene.wohnzimmer_entspannen
               - type: button
-                name: Esszimmer Dinner
+                name: Dinner
                 icon: mdi:silverware-fork-knife
                 tap_action:
                   action: call-service
                   service: scene.turn_on
-                  data:
+                  target:
                     entity_id: scene.esszimmer_entspannen
               - type: button
-                name: Bar Honolulu
-                icon: mdi:palm-tree
+                name: Kino
+                icon: mdi:television-ambient-light
                 tap_action:
                   action: call-service
                   service: scene.turn_on
-                  data:
-                    entity_id: scene.bar_honolulu
-              - type: button
-                name: Küche Energie
-                icon: mdi:lightning-bolt
-                tap_action:
-                  action: call-service
-                  service: scene.turn_on
-                  data:
-                    entity_id: scene.kuche_energie_tanken
-              - type: button
-                name: Wohnzimmer Lesen
-                icon: mdi:book-open-variant
-                tap_action:
-                  action: call-service
-                  service: scene.turn_on
-                  data:
-                    entity_id: scene.wohnzimmer_lesen
-              - type: button
-                name: Alles Aus
-                icon: mdi:power
-                tap_action:
-                  action: call-service
-                  service: scene.turn_on
-                  data:
-                    entity_id: scene.gehen
-          - type: grid
-            title: Musikzonen
-            columns: 2
-            square: false
+                  target:
+                    entity_id: scene.heimkino
+          - type: horizontal-stack
             cards:
               - type: media-control
                 entity: media_player.wohnzimmer
               - type: media-control
                 entity: media_player.esszimmer_3
-              - type: media-control
-                entity: media_player.kuche
-              - type: media-control
-                entity: media_player.kinderzimmer
           - type: markdown
-            title: Stimmung im Wohnbereich
             content: |
-              {% set laune = states('scene.wohnzimmer_entspannen') %}
-              **Beleuchtung**: Schneller Zugriff auf deine sechs Lieblingsstimmungen. Kombiniere sie mit der Musik deiner Wahl.
-
               {% if is_state('media_player.wohnzimmer', 'playing') %}
-              Aktuell läuft im Wohnzimmer **{{ state_attr('media_player.wohnzimmer', 'media_title') }}**.
-              {% elif is_state('media_player.spotify_dominik_balsiger', 'playing') %}
-              Spotify streamt **{{ state_attr('media_player.spotify_dominik_balsiger', 'media_title') }}**.
-              {% else %}
-              Wähle eine Playlist aus, um deine Lieblingsszenen zu begleiten.
+              Wohnzimmer spielt **{{ state_attr('media_player.wohnzimmer', 'media_title') }}** von {{ state_attr('media_player.wohnzimmer', 'media_artist') }}
+              {% endif %}
+
+              {% if is_state('media_player.esszimmer_3', 'playing') %}
+              Esszimmer spielt **{{ state_attr('media_player.esszimmer_3', 'media_title') }}** von {{ state_attr('media_player.esszimmer_3', 'media_artist') }}
               {% endif %}
       - type: markdown
         content: " "
@@ -260,35 +326,37 @@ views:
             ha-card {
               background: transparent;
               box-shadow: none;
-              min-height: 120px;
+              min-height: 140px;
             }
       - type: grid
+        columns: 8
         square: false
-        columns: 6
         card_mod:
           style: |
             :host {
               position: fixed;
               left: 50%;
-              bottom: 20px;
+              bottom: 24px;
               transform: translateX(-50%);
-              width: min(80vw, 1200px);
+              width: min(80vw, 2048px);
               z-index: 1000;
             }
             ha-card {
               width: 100%;
               margin: 0 auto;
-              border-radius: 24px;
-              box-shadow: var(--ha-card-box-shadow, 0px 6px 16px rgba(0, 0, 0, 0.2));
-              padding-bottom: 4px;
+              border-radius: 20px;
+              backdrop-filter: blur(8px);
+              background: rgba(20, 24, 32, 0.75);
+              box-shadow: 0 12px 32px rgba(0, 0, 0, 0.35);
+              padding: 12px 8px 4px;
             }
         cards:
           - type: button
-            name: Übersicht
-            icon: mdi:view-dashboard
+            name: Home
+            icon: mdi:home
             tap_action:
               action: navigate
-              navigation_path: overview
+              navigation_path: home
           - type: button
             name: Wohnbereich
             icon: mdi:sofa
@@ -314,74 +382,120 @@ views:
               action: navigate
               navigation_path: kameras
           - type: button
-            name: Sensoren
-            icon: mdi:chart-box
+            name: Reinigung
+            icon: mdi:vacuum
             tap_action:
               action: navigate
-              navigation_path: sensoren
+              navigation_path: reinigung
+          - type: button
+            name: 3D Drucker
+            icon: mdi:printer-3d
+            tap_action:
+              action: navigate
+              navigation_path: drucker
+          - type: button
+            name: Kalender
+            icon: mdi:calendar
+            tap_action:
+              action: navigate
+              navigation_path: kalender
 
-  - title: Licht
+  - title: Beleuchtung
     path: licht
     icon: mdi:lightbulb-group
     cards:
-      - type: vertical-stack
+      - type: grid
+        columns: 4
+        square: false
         cards:
-          - type: grid
-            title: Wohnzimmer & Essbereich
-            columns: 2
-            square: false
-            cards:
-              - type: light
-                entity: light.wohnzimmer
-              - type: light
-                entity: light.salontisch
-              - type: light
-                entity: light.vitrine_links
-              - type: light
-                entity: light.esszimmer
-          - type: grid
-            title: Küche & Bar
-            columns: 2
-            square: false
-            cards:
-              - type: light
-                entity: light.kuche
-              - type: light
-                entity: light.bar
-              - type: light
-                entity: light.extended_color_light_4
-              - type: light
-                entity: light.hue_lightstrip_plus_1
-          - type: grid
-            title: Schlaf- & Kinderzimmer
-            columns: 2
-            square: false
-            cards:
-              - type: light
-                entity: light.schlafzimmer
-              - type: light
-                entity: light.kinderzimmer
-              - type: light
-                entity: light.licht_kinderzimmer
-              - type: light
-                entity: light.rileys_lampe
-          - type: grid
-            title: Badezimmer & Flur
-            columns: 2
-            square: false
-            cards:
-              - type: light
-                entity: light.badezimmer
-              - type: light
-                entity: light.gastebad
-              - type: light
-                entity: light.badezimmer_links
-              - type: light
-                entity: light.badezimmer_rechts
-              - type: light
-                entity: light.garderobe
-              - type: light
-                entity: light.korridor
+          - type: custom:mushroom-light-card
+            entity: light.hue_lightstrip_plus_1
+            name: Anrichte
+            show_brightness_control: true
+            use_light_color: true
+            show_color_control: true
+          - type: custom:mushroom-light-card
+            entity: light.extended_color_light_4
+            name: Küche Decke
+            show_brightness_control: true
+            use_light_color: true
+            show_color_control: true
+          - type: custom:mushroom-light-card
+            entity: light.bar
+            name: Bar
+            show_brightness_control: true
+            use_light_color: true
+            show_color_control: true
+          - type: custom:mushroom-light-card
+            entity: light.wohnzimmer_2
+            name: Wohnzimmer
+            show_brightness_control: true
+            use_light_color: true
+            show_color_control: true
+          - type: custom:mushroom-light-card
+            entity: light.esstisch_oben
+            name: Esstisch oben
+            show_brightness_control: true
+            use_light_color: true
+            show_color_control: true
+          - type: custom:mushroom-light-card
+            entity: light.esstisch_unten
+            name: Esstisch unten
+            show_brightness_control: true
+            use_light_color: true
+            show_color_control: true
+          - type: custom:mushroom-light-card
+            entity: light.korridor
+            name: Gang
+            show_brightness_control: true
+            use_light_color: true
+            show_color_temp_control: true
+            show_color_control: false
+          - type: custom:mushroom-light-card
+            entity: light.hue_go
+            name: Adore
+            show_brightness_control: true
+            use_light_color: true
+            show_color_control: true
+          - type: custom:mushroom-light-card
+            entity: light.vitrine_rechts
+            name: Salontisch
+            show_brightness_control: true
+            use_light_color: true
+            show_color_control: true
+          - type: custom:mushroom-light-card
+            entity: light.garderobe
+            name: Garderobe
+            show_brightness_control: true
+            show_color_temp_control: true
+      - type: horizontal-stack
+        cards:
+          - type: entities
+            title: Bewegungsmelder vorn
+            show_header_toggle: false
+            entities:
+              - entity: automation.sensor_licht_kuche
+                name: Sensor Licht Küche
+              - entity: automation.kinderzimmer
+                name: Sensor Licht Kinderzimmer
+              - entity: automation.licht_sensor_badezimmer
+                name: Sensor Licht Badezimmer
+              - entity: automation.sensor_light
+                name: Sensor Licht Büro
+          - type: entities
+            title: Bewegungsmelder hinten
+            show_header_toggle: false
+            entities:
+              - entity: automation.sensor_licht_korridor
+                name: Sensor Licht Korridor
+              - entity: automation.sensor_licht_gostebad
+                name: Sensor Licht GästeBad
+              - entity: automation.sensor_licht_kuche
+                name: Sensor Licht Küche Decke
+              - entity: automation.sensor_licht_eingang
+                name: Sensor Licht Eingang
+              - entity: automation.sensor_licht_wohnzimmer
+                name: Sensor Licht Wohnzimmer
       - type: markdown
         content: " "
         card_mod:
@@ -389,35 +503,37 @@ views:
             ha-card {
               background: transparent;
               box-shadow: none;
-              min-height: 120px;
+              min-height: 140px;
             }
       - type: grid
+        columns: 8
         square: false
-        columns: 6
         card_mod:
           style: |
             :host {
               position: fixed;
               left: 50%;
-              bottom: 20px;
+              bottom: 24px;
               transform: translateX(-50%);
-              width: min(80vw, 1200px);
+              width: min(80vw, 2048px);
               z-index: 1000;
             }
             ha-card {
               width: 100%;
               margin: 0 auto;
-              border-radius: 24px;
-              box-shadow: var(--ha-card-box-shadow, 0px 6px 16px rgba(0, 0, 0, 0.2));
-              padding-bottom: 4px;
+              border-radius: 20px;
+              backdrop-filter: blur(8px);
+              background: rgba(20, 24, 32, 0.75);
+              box-shadow: 0 12px 32px rgba(0, 0, 0, 0.35);
+              padding: 12px 8px 4px;
             }
         cards:
           - type: button
-            name: Übersicht
-            icon: mdi:view-dashboard
+            name: Home
+            icon: mdi:home
             tap_action:
               action: navigate
-              navigation_path: overview
+              navigation_path: home
           - type: button
             name: Wohnbereich
             icon: mdi:sofa
@@ -443,56 +559,108 @@ views:
               action: navigate
               navigation_path: kameras
           - type: button
-            name: Sensoren
-            icon: mdi:chart-box
+            name: Reinigung
+            icon: mdi:vacuum
             tap_action:
               action: navigate
-              navigation_path: sensoren
+              navigation_path: reinigung
+          - type: button
+            name: 3D Drucker
+            icon: mdi:printer-3d
+            tap_action:
+              action: navigate
+              navigation_path: drucker
+          - type: button
+            name: Kalender
+            icon: mdi:calendar
+            tap_action:
+              action: navigate
+              navigation_path: kalender
 
   - title: Musik
     path: musik
-    icon: mdi:music-circle
+    icon: mdi:music
     cards:
       - type: vertical-stack
         cards:
-          - type: grid
-            title: Multiroom Controller
-            columns: 2
-            square: false
-            cards:
-              - type: media-control
-                entity: media_player.spotify_dominik_balsiger
-              - type: media-control
-                entity: media_player.wohnzimmer
-              - type: media-control
-                entity: media_player.esszimmer_3
-              - type: media-control
-                entity: media_player.kuche
-              - type: media-control
-                entity: media_player.kinderzimmer
-              - type: media-control
-                entity: media_player.tv_wohnzimmer
-          - type: markdown
-            title: Playlist & Stimmung
-            content: |
-              {% set players = [
-                  'media_player.spotify_dominik_balsiger',
-                  'media_player.wohnzimmer',
-                  'media_player.esszimmer_3',
-                  'media_player.kuche',
-                  'media_player.kinderzimmer',
-                  'media_player.tv_wohnzimmer'
-                ] %}
-              {% for player in players %}
-              {% set name = state_attr(player, 'friendly_name') or player.split('.')[-1]|replace('_', ' ')|title %}
-              {% if is_state(player, 'playing') %}
-              • **{{ name }}** spielt **{{ state_attr(player, 'media_title') }}**{% if state_attr(player, 'media_artist') %} – {{ state_attr(player, 'media_artist') }}{% endif %}
-              {% elif is_state(player, 'paused') %}
-              • **{{ name }}** ist pausiert ({{ state_attr(player, 'media_title') or 'keine Auswahl' }})
-              {% else %}
-              • **{{ name }}** wartet auf eine Playlist.
-              {% endif %}
-              {% endfor %}
+          - type: custom:sonos-card
+            sections:
+              - player
+            entities:
+              - media_player.kuche
+              - media_player.wohnzimmer
+              - media_player.arbeitszimmer
+              - media_player.kinderzimmer
+              - media_player.bad
+              - media_player.gastebad
+              - media_player.schlafzimmer
+              - media_player.esszimmer_3
+            predefinedGroups:
+              - name: Standard
+                media: ''
+                entities:
+                  - player: media_player.kuche
+                    volume: 20
+                  - player: media_player.wohnzimmer
+                    volume: 20
+                  - player: media_player.bad
+                    volume: 20
+                  - player: media_player.gastebad
+                    volume: 20
+              - name: Party
+                media: ''
+                entities:
+                  - player: media_player.kuche
+                    volume: 25
+                  - player: media_player.wohnzimmer
+                    volume: 25
+                  - player: media_player.arbeitszimmer
+                    volume: 10
+                  - player: media_player.bad
+                    volume: 20
+                  - player: media_player.gastebad
+                    volume: 20
+                  - player: media_player.kinderzimmer
+                    volume: 15
+            showVolumeUpAndDownButtons: true
+            heightPercentage: 100
+          - type: custom:sonos-card
+            sections:
+              - media browser
+            entities:
+              - media_player.wohnzimmer
+              - media_player.arbeitszimmer
+              - media_player.kinderzimmer
+              - media_player.bad
+              - media_player.gastebad
+              - media_player.schlafzimmer
+              - media_player.kuche
+              - media_player.esszimmer_3
+          - type: custom:sonos-card
+            sections:
+              - grouping
+            entities:
+              - media_player.wohnzimmer
+              - media_player.arbeitszimmer
+              - media_player.kinderzimmer
+              - media_player.bad
+              - media_player.gastebad
+              - media_player.schlafzimmer
+              - media_player.kuche
+              - media_player.esszimmer_3
+            favoritesItemsPerRow: 12
+      - type: markdown
+        content: |
+          {% if is_state('sensor.genius_lyrics_esszimmer_3_lyrics', 'on') %}
+          ![image]({{ states.sensor.genius_lyrics_esszimmer_3_lyrics.attributes.media_image }})
+
+          ## {{ states.sensor.genius_lyrics_esszimmer_3_lyrics.attributes.media_artist }}  
+          ### {{ states.sensor.genius_lyrics_esszimmer_3_lyrics.attributes.media_title }}  
+
+          {{ states.sensor.genius_lyrics_esszimmer_3_lyrics.attributes.media_lyrics }}
+          {% else %}
+          Aktuell sind keine Songtexte verfügbar.
+          {% endif %}
       - type: markdown
         content: " "
         card_mod:
@@ -500,35 +668,37 @@ views:
             ha-card {
               background: transparent;
               box-shadow: none;
-              min-height: 120px;
+              min-height: 140px;
             }
       - type: grid
+        columns: 8
         square: false
-        columns: 6
         card_mod:
           style: |
             :host {
               position: fixed;
               left: 50%;
-              bottom: 20px;
+              bottom: 24px;
               transform: translateX(-50%);
-              width: min(80vw, 1200px);
+              width: min(80vw, 2048px);
               z-index: 1000;
             }
             ha-card {
               width: 100%;
               margin: 0 auto;
-              border-radius: 24px;
-              box-shadow: var(--ha-card-box-shadow, 0px 6px 16px rgba(0, 0, 0, 0.2));
-              padding-bottom: 4px;
+              border-radius: 20px;
+              backdrop-filter: blur(8px);
+              background: rgba(20, 24, 32, 0.75);
+              box-shadow: 0 12px 32px rgba(0, 0, 0, 0.35);
+              padding: 12px 8px 4px;
             }
         cards:
           - type: button
-            name: Übersicht
-            icon: mdi:view-dashboard
+            name: Home
+            icon: mdi:home
             tap_action:
               action: navigate
-              navigation_path: overview
+              navigation_path: home
           - type: button
             name: Wohnbereich
             icon: mdi:sofa
@@ -554,158 +724,231 @@ views:
               action: navigate
               navigation_path: kameras
           - type: button
-            name: Sensoren
-            icon: mdi:chart-box
+            name: Reinigung
+            icon: mdi:vacuum
             tap_action:
               action: navigate
-              navigation_path: sensoren
+              navigation_path: reinigung
+          - type: button
+            name: 3D Drucker
+            icon: mdi:printer-3d
+            tap_action:
+              action: navigate
+              navigation_path: drucker
+          - type: button
+            name: Kalender
+            icon: mdi:calendar
+            tap_action:
+              action: navigate
+              navigation_path: kalender
 
   - title: Kameras
     path: kameras
     icon: mdi:cctv
     cards:
       - type: grid
-        title: Live-Überblick
         columns: 2
         square: false
         cards:
           - type: picture-entity
             entity: camera.aarlo_babybett
-            name: Babybett
+            camera_view: live
+            show_name: false
+            show_state: false
           - type: picture-entity
             entity: camera.aarlo_kinderzimmer
-            name: Kinderzimmer
-          - type: picture-entity
-            entity: camera.aarlo_katzentor
-            name: Katzentor
+            camera_view: live
+            show_name: false
+            show_state: false
           - type: picture-entity
             entity: camera.aarlo_dondolo
-            name: Dondolo
+            camera_view: live
+            show_name: false
+            show_state: false
           - type: picture-entity
-            entity: camera.aarlo_3d_drucker
+            entity: camera.prusa_mk3s_mmu2s_camera
+            camera_view: live
+            show_name: false
+            show_state: false
+      - type: markdown
+        content: " "
+        card_mod:
+          style: |
+            ha-card {
+              background: transparent;
+              box-shadow: none;
+              min-height: 140px;
+            }
+      - type: grid
+        columns: 8
+        square: false
+        card_mod:
+          style: |
+            :host {
+              position: fixed;
+              left: 50%;
+              bottom: 24px;
+              transform: translateX(-50%);
+              width: min(80vw, 2048px);
+              z-index: 1000;
+            }
+            ha-card {
+              width: 100%;
+              margin: 0 auto;
+              border-radius: 20px;
+              backdrop-filter: blur(8px);
+              background: rgba(20, 24, 32, 0.75);
+              box-shadow: 0 12px 32px rgba(0, 0, 0, 0.35);
+              padding: 12px 8px 4px;
+            }
+        cards:
+          - type: button
+            name: Home
+            icon: mdi:home
+            tap_action:
+              action: navigate
+              navigation_path: home
+          - type: button
+            name: Wohnbereich
+            icon: mdi:sofa
+            tap_action:
+              action: navigate
+              navigation_path: wohnbereich
+          - type: button
+            name: Licht
+            icon: mdi:lightbulb-group
+            tap_action:
+              action: navigate
+              navigation_path: licht
+          - type: button
+            name: Musik
+            icon: mdi:music-circle
+            tap_action:
+              action: navigate
+              navigation_path: musik
+          - type: button
+            name: Kameras
+            icon: mdi:cctv
+            tap_action:
+              action: navigate
+              navigation_path: kameras
+          - type: button
+            name: Reinigung
+            icon: mdi:vacuum
+            tap_action:
+              action: navigate
+              navigation_path: reinigung
+          - type: button
             name: 3D Drucker
-          - type: picture-entity
-            entity: camera.smart_pet_feeder_with_camera
-            name: Futterstation
-      - type: grid
-        title: Tablet & Map Streams
-        columns: 2
-        square: false
-        cards:
-          - type: picture-entity
-            entity: camera.terra_pad_1201
-            name: Terra Panel
-          - type: picture-entity
-            entity: camera.dreame_map
-            name: Dreame Karte
-      - type: markdown
-        content: " "
-        card_mod:
-          style: |
-            ha-card {
-              background: transparent;
-              box-shadow: none;
-              min-height: 120px;
-            }
-      - type: grid
-        square: false
-        columns: 6
-        card_mod:
-          style: |
-            :host {
-              position: fixed;
-              left: 50%;
-              bottom: 20px;
-              transform: translateX(-50%);
-              width: min(80vw, 1200px);
-              z-index: 1000;
-            }
-            ha-card {
-              width: 100%;
-              margin: 0 auto;
-              border-radius: 24px;
-              box-shadow: var(--ha-card-box-shadow, 0px 6px 16px rgba(0, 0, 0, 0.2));
-              padding-bottom: 4px;
-            }
-        cards:
-          - type: button
-            name: Übersicht
-            icon: mdi:view-dashboard
+            icon: mdi:printer-3d
             tap_action:
               action: navigate
-              navigation_path: overview
+              navigation_path: drucker
           - type: button
-            name: Wohnbereich
-            icon: mdi:sofa
+            name: Kalender
+            icon: mdi:calendar
             tap_action:
               action: navigate
-              navigation_path: wohnbereich
-          - type: button
-            name: Licht
-            icon: mdi:lightbulb-group
-            tap_action:
-              action: navigate
-              navigation_path: licht
-          - type: button
-            name: Musik
-            icon: mdi:music-circle
-            tap_action:
-              action: navigate
-              navigation_path: musik
-          - type: button
-            name: Kameras
-            icon: mdi:cctv
-            tap_action:
-              action: navigate
-              navigation_path: kameras
-          - type: button
-            name: Sensoren
-            icon: mdi:chart-box
-            tap_action:
-              action: navigate
-              navigation_path: sensoren
+              navigation_path: kalender
 
-  - title: Sensoren
-    path: sensoren
-    icon: mdi:chart-box
+  - title: Reinigung
+    path: reinigung
+    icon: mdi:vacuum
     cards:
-      - type: grid
-        title: Umwelt
-        columns: 2
-        square: false
+      - type: horizontal-stack
         cards:
-          - type: entities
-            title: Wohnzimmer & Flur
-            entities:
-              - sensor.sensor_wohnzimmer_temperature
-              - sensor.sensor_korridor_temperature
-              - binary_sensor.sensor_korridor_occupancy
-          - type: entities
-            title: Kinderbereich
-            entities:
-              - sensor.aarlo_temperature_kinderzimmer
-              - sensor.aarlo_humidity_kinderzimmer
-              - binary_sensor.aarlo_motion_kinderzimmer
-      - type: grid
-        title: Batterie-Status
-        columns: 2
-        square: false
-        cards:
-          - type: entities
-            title: Tablets & Displays
-            entities:
-              - sensor.terra_pad_1201_battery_level
-              - sensor.sm_t533_battery_level
-              - sensor.terra_pad_1201_battery_state
-              - sensor.sm_t533_battery_state
-          - type: entities
-            title: Sicherheit
-            entities:
-              - sensor.kinderzimmer_batterie
-              - sensor.aarlo_battery_level_babybett
-              - binary_sensor.aarlo_motion_dondolo
-              - binary_sensor.aarlo_motion_babybett
-              - binary_sensor.aarlo_sound_kinderzimmer
+          - type: custom:xiaomi-vacuum-map-card
+            map_source:
+              camera: camera.dreame_map_1
+            calibration_source:
+              camera: true
+            entity: vacuum.dreame
+            vacuum_platform: Tasshack/dreame-vacuum
+            map_locked: true
+          - type: vertical-stack
+            cards:
+              - type: grid
+                title: Räume auswählen
+                columns: 3
+                square: false
+                cards:
+                  - type: button
+                    name: Primary Bedroom
+                    icon: mdi:bed
+                    tap_action:
+                      action: call-service
+                      service: dreame_vacuum.vacuum_clean_segment
+                      data:
+                        entity_id: vacuum.dreame
+                        segments: 2
+                  - type: button
+                    name: Living Room
+                    icon: mdi:sofa
+                    tap_action:
+                      action: call-service
+                      service: dreame_vacuum.vacuum_clean_segment
+                      data:
+                        entity_id: vacuum.dreame
+                        segments: 3
+                  - type: button
+                    name: Kitchen
+                    icon: mdi:silverware-fork-knife
+                    tap_action:
+                      action: call-service
+                      service: dreame_vacuum.vacuum_clean_segment
+                      data:
+                        entity_id: vacuum.dreame
+                        segments: 4
+                  - type: button
+                    name: Corridor
+                    icon: mdi:highway
+                    tap_action:
+                      action: call-service
+                      service: dreame_vacuum.vacuum_clean_segment
+                      data:
+                        entity_id: vacuum.dreame
+                        segments: 5
+                  - type: button
+                    name: Badezimmer
+                    icon: mdi:shower
+                    tap_action:
+                      action: call-service
+                      service: dreame_vacuum.vacuum_clean_segment
+                      data:
+                        entity_id: vacuum.dreame
+                        segments: 6
+                  - type: button
+                    name: Kinderzimmer
+                    icon: mdi:teddy-bear
+                    tap_action:
+                      action: call-service
+                      service: dreame_vacuum.vacuum_clean_segment
+                      data:
+                        entity_id: vacuum.dreame
+                        segments: 8
+                  - type: button
+                    name: Study
+                    icon: mdi:desk
+                    tap_action:
+                      action: call-service
+                      service: dreame_vacuum.vacuum_clean_segment
+                      data:
+                        entity_id: vacuum.dreame
+                        segments: 9
+                  - type: button
+                    name: Dining Hall
+                    icon: mdi:silverware
+                    tap_action:
+                      action: call-service
+                      service: dreame_vacuum.vacuum_clean_segment
+                      data:
+                        entity_id: vacuum.dreame
+                        segments: 11
+              - type: entities
+                title: Reinigungsmodus
+                entities:
+                  - entity: select.dreame_cleaning_mode
+                    name: Modus auswählen
       - type: markdown
         content: " "
         card_mod:
@@ -713,35 +956,37 @@ views:
             ha-card {
               background: transparent;
               box-shadow: none;
-              min-height: 120px;
+              min-height: 140px;
             }
       - type: grid
+        columns: 8
         square: false
-        columns: 6
         card_mod:
           style: |
             :host {
               position: fixed;
               left: 50%;
-              bottom: 20px;
+              bottom: 24px;
               transform: translateX(-50%);
-              width: min(80vw, 1200px);
+              width: min(80vw, 2048px);
               z-index: 1000;
             }
             ha-card {
               width: 100%;
               margin: 0 auto;
-              border-radius: 24px;
-              box-shadow: var(--ha-card-box-shadow, 0px 6px 16px rgba(0, 0, 0, 0.2));
-              padding-bottom: 4px;
+              border-radius: 20px;
+              backdrop-filter: blur(8px);
+              background: rgba(20, 24, 32, 0.75);
+              box-shadow: 0 12px 32px rgba(0, 0, 0, 0.35);
+              padding: 12px 8px 4px;
             }
         cards:
           - type: button
-            name: Übersicht
-            icon: mdi:view-dashboard
+            name: Home
+            icon: mdi:home
             tap_action:
               action: navigate
-              navigation_path: overview
+              navigation_path: home
           - type: button
             name: Wohnbereich
             icon: mdi:sofa
@@ -767,8 +1012,491 @@ views:
               action: navigate
               navigation_path: kameras
           - type: button
-            name: Sensoren
-            icon: mdi:chart-box
+            name: Reinigung
+            icon: mdi:vacuum
             tap_action:
               action: navigate
-              navigation_path: sensoren
+              navigation_path: reinigung
+          - type: button
+            name: 3D Drucker
+            icon: mdi:printer-3d
+            tap_action:
+              action: navigate
+              navigation_path: drucker
+          - type: button
+            name: Kalender
+            icon: mdi:calendar
+            tap_action:
+              action: navigate
+              navigation_path: kalender
+
+  - title: 3D Drucker
+    path: drucker
+    icon: mdi:printer-3d
+    type: sections
+    sections:
+      - type: grid
+        cards:
+          - type: vertical-stack
+            cards:
+              - type: custom:mushroom-title-card
+                title: Creality K2 Plus - Druckerstatus
+              - type: custom:mushroom-template-card
+                primary: >-
+                  Druckstatus: {{ states('sensor.creality_k2_plus_printer_state') }}
+                secondary: >-
+                  Fortschritt: {{ states('sensor.creality_k2_plus_progress') }} %
+                icon: mdi:printer-3d
+                icon_color: green
+              - type: custom:bar-card
+                name: Druckfortschritt
+                min: 0
+                max: 100
+                height: 25px
+                color: green
+                entities:
+                  - entity: sensor.creality_k2_plus_progress
+              - type: horizontal-stack
+                cards:
+                  - type: custom:mushroom-template-card
+                    primary: Restzeit
+                    secondary: >-
+                      {{ (states('sensor.creality_k2_plus_print_time_left') | float / 60) | round(1) }} Min.
+                    icon: mdi:clock-end
+                    icon_color: yellow
+                  - type: custom:mushroom-template-card
+                    primary: Druckdauer
+                    secondary: >-
+                      {{ states('sensor.creality_k2_plus_print_duration') }} Min.
+                    icon: mdi:clock
+                    icon_color: blue
+                  - type: custom:mushroom-template-card
+                    primary: Fertig um
+                    secondary: "{{ states('sensor.creality_k2_plus_print_eta') }}"
+                    icon: mdi:calendar-clock
+                    icon_color: green
+              - type: horizontal-stack
+                cards:
+                  - type: custom:mushroom-template-card
+                    primary: MCU-Temp
+                    secondary: "{{ states('sensor.creality_k2_plus_mcu_temp') }} °C"
+                    icon: mdi:chip
+                    icon_color: gray
+                  - type: custom:mushroom-template-card
+                    primary: Systemlast
+                    secondary: "{{ states('sensor.creality_k2_plus_system_load') }}"
+                    icon: mdi:memory
+                    icon_color: purple
+                  - type: custom:mushroom-template-card
+                    primary: RAM Nutzung
+                    secondary: "{{ states('sensor.creality_k2_plus_memory_used') }} %"
+                    icon: mdi:chip
+                    icon_color: orange
+              - type: horizontal-stack
+                cards:
+                  - type: custom:mushroom-template-card
+                    primary: Filament Gesamt
+                    secondary: >-
+                      {{ states('sensor.creality_k2_plus_totals_filament_used') }} m
+                    icon: mdi:tape-measure
+                    icon_color: cyan
+                  - type: custom:mushroom-template-card
+                    primary: Gesamtjobs
+                    secondary: "{{ states('sensor.creality_k2_plus_totals_jobs') }}"
+                    icon: mdi:counter
+                    icon_color: green
+                  - type: custom:mushroom-template-card
+                    primary: Gesamtzeit
+                    secondary: "{{ states('sensor.creality_k2_plus_totals_print_time') }}"
+                    icon: mdi:clock
+                    icon_color: blue
+              - type: horizontal-stack
+                cards:
+                  - type: custom:mushroom-template-card
+                    primary: Druckhöhe
+                    secondary: "{{ states('sensor.creality_k2_plus_object_height') }} mm"
+                    icon: mdi:axis-z-arrow
+                    icon_color: orange
+                  - type: custom:mushroom-template-card
+                    primary: X/Y/Z-Position
+                    secondary: >-
+                      X: {{ states('sensor.creality_k2_plus_toolhead_position_x') }} | Y: {{ states('sensor.creality_k2_plus_toolhead_position_y') }} | Z: {{ states('sensor.creality_k2_plus_toolhead_position_z') }}
+                    icon: mdi:axis-arrow
+                    icon_color: teal
+              - type: horizontal-stack
+                cards:
+                  - type: button
+                    entity: button.creality_k2_plus_pause_print
+                    name: Pause
+                    icon: mdi:pause
+                    tap_action:
+                      action: call-service
+                      service: button.press
+                      target:
+                        entity_id: button.creality_k2_plus_pause_print
+                  - type: button
+                    entity: button.creality_k2_plus_resume_print
+                    name: Fortsetzen
+                    icon: mdi:play
+                    tap_action:
+                      action: call-service
+                      service: button.press
+                      target:
+                        entity_id: button.creality_k2_plus_resume_print
+                  - type: button
+                    entity: button.creality_k2_plus_macro_xyz_ready
+                    name: Homing
+                    icon: mdi:axis-arrow
+                    tap_action:
+                      action: call-service
+                      service: button.press
+                      target:
+                        entity_id: button.creality_k2_plus_macro_xyz_ready
+                  - type: button
+                    entity: button.creality_k2_plus_server_restart
+                    name: Neustart
+                    icon: mdi:restart
+                    tap_action:
+                      action: call-service
+                      service: button.press
+                      target:
+                        entity_id: button.creality_k2_plus_server_restart
+          - type: tile
+            entity: switch.shelly1_b97789
+            features_position: bottom
+            vertical: false
+            grid_options:
+              columns: 12
+              rows: 1
+      - type: grid
+        cards:
+          - type: heading
+            icon: mdi:printer-3d
+            heading_style: title
+          - type: custom:webrtc-camera
+            url: rtsp://ie7kyujzs43xdmgahcsfwkkmw6fgmooo.ui.nabu.casa:8554/creality_k2_plus_webcam
+            card_mod:
+              style: |
+                ha-card {
+                  height: 440px;
+                  width: 780px;
+                }
+      - type: grid
+        cards:
+          - type: markdown
+            content: " "
+            card_mod:
+              style: |
+                ha-card {
+                  background: transparent;
+                  box-shadow: none;
+                  min-height: 140px;
+                }
+      - type: grid
+        cards:
+          - type: grid
+            columns: 8
+            square: false
+            card_mod:
+              style: |
+                :host {
+                  position: fixed;
+                  left: 50%;
+                  bottom: 24px;
+                  transform: translateX(-50%);
+                  width: min(80vw, 2048px);
+                  z-index: 1000;
+                }
+                ha-card {
+                  width: 100%;
+                  margin: 0 auto;
+                  border-radius: 20px;
+                  backdrop-filter: blur(8px);
+                  background: rgba(20, 24, 32, 0.75);
+                  box-shadow: 0 12px 32px rgba(0, 0, 0, 0.35);
+                  padding: 12px 8px 4px;
+                }
+            cards:
+              - type: button
+                name: Home
+                icon: mdi:home
+                tap_action:
+                  action: navigate
+                  navigation_path: home
+              - type: button
+                name: Wohnbereich
+                icon: mdi:sofa
+                tap_action:
+                  action: navigate
+                  navigation_path: wohnbereich
+              - type: button
+                name: Licht
+                icon: mdi:lightbulb-group
+                tap_action:
+                  action: navigate
+                  navigation_path: licht
+              - type: button
+                name: Musik
+                icon: mdi:music-circle
+                tap_action:
+                  action: navigate
+                  navigation_path: musik
+              - type: button
+                name: Kameras
+                icon: mdi:cctv
+                tap_action:
+                  action: navigate
+                  navigation_path: kameras
+              - type: button
+                name: Reinigung
+                icon: mdi:vacuum
+                tap_action:
+                  action: navigate
+                  navigation_path: reinigung
+              - type: button
+                name: 3D Drucker
+                icon: mdi:printer-3d
+                tap_action:
+                  action: navigate
+                  navigation_path: drucker
+              - type: button
+                name: Kalender
+                icon: mdi:calendar
+                tap_action:
+                  action: navigate
+                  navigation_path: kalender
+
+  - title: Kalender
+    path: kalender
+    icon: mdi:calendar
+    cards:
+      - type: custom:week-planner-card
+        calendars:
+          - entity: calendar.ep_bernhard_ag
+            hideInLegend: false
+            color: '#008000'
+          - entity: calendar.familie
+            color: '#ffc0cb'
+          - entity: calendar.melanie
+            color: '#ffff00'
+        startingDay: today
+        startingDayOffset: 0
+        hideWeekend: false
+        noCardBackground: true
+        compact: false
+        weather:
+          showCondition: true
+          showTemperature: true
+          showLowTemperature: true
+          useTwiceDaily: false
+          entity: weather.forecast_home_2
+        showLocation: false
+        hidePastEvents: false
+        hideDaysWithoutEvents: false
+        hideTodayWithoutEvents: false
+        combineSimilarEvents: false
+        showLegend: false
+        locale: De
+        legendToggle: false
+        updateInterval: '5'
+        days: '5'
+      - type: markdown
+        content: " "
+        card_mod:
+          style: |
+            ha-card {
+              background: transparent;
+              box-shadow: none;
+              min-height: 140px;
+            }
+      - type: grid
+        columns: 8
+        square: false
+        card_mod:
+          style: |
+            :host {
+              position: fixed;
+              left: 50%;
+              bottom: 24px;
+              transform: translateX(-50%);
+              width: min(80vw, 2048px);
+              z-index: 1000;
+            }
+            ha-card {
+              width: 100%;
+              margin: 0 auto;
+              border-radius: 20px;
+              backdrop-filter: blur(8px);
+              background: rgba(20, 24, 32, 0.75);
+              box-shadow: 0 12px 32px rgba(0, 0, 0, 0.35);
+              padding: 12px 8px 4px;
+            }
+        cards:
+          - type: button
+            name: Home
+            icon: mdi:home
+            tap_action:
+              action: navigate
+              navigation_path: home
+          - type: button
+            name: Wohnbereich
+            icon: mdi:sofa
+            tap_action:
+              action: navigate
+              navigation_path: wohnbereich
+          - type: button
+            name: Licht
+            icon: mdi:lightbulb-group
+            tap_action:
+              action: navigate
+              navigation_path: licht
+          - type: button
+            name: Musik
+            icon: mdi:music-circle
+            tap_action:
+              action: navigate
+              navigation_path: musik
+          - type: button
+            name: Kameras
+            icon: mdi:cctv
+            tap_action:
+              action: navigate
+              navigation_path: kameras
+          - type: button
+            name: Reinigung
+            icon: mdi:vacuum
+            tap_action:
+              action: navigate
+              navigation_path: reinigung
+          - type: button
+            name: 3D Drucker
+            icon: mdi:printer-3d
+            tap_action:
+              action: navigate
+              navigation_path: drucker
+          - type: button
+            name: Kalender
+            icon: mdi:calendar
+            tap_action:
+              action: navigate
+              navigation_path: kalender
+
+  - title: Tonie's
+    path: tonie
+    icon: mdi:teddy-bear
+    cards:
+      - type: horizontal-stack
+        cards:
+          - type: picture-entity
+            entity: image.dominik_s_tonie_box_content_picture
+            show_name: false
+            show_state: false
+            aspect_ratio: 1
+          - type: vertical-stack
+            cards:
+              - type: entity
+                entity: sensor.dominik_s_tonie_box_content_title
+                name: Titel
+              - type: entities
+                title: Dominik’s Toniebox
+                entities:
+                  - entity: sensor.dominik_s_tonie_box_tag_valid
+                    name: Tag UID
+                  - entity: binary_sensor.dominik_s_tonie_box_charger
+                    name: Ladestation
+                  - entity: sensor.dominik_s_tonie_box_volume_db
+                    name: Volume dB
+                  - entity: sensor.dominik_s_tonie_box_volume_level
+                    name: Volume Level
+                  - entity: event.dominik_s_tonie_box_volume_down
+                    name: kleines Ohr (leiser)
+                  - entity: event.dominik_s_tonie_box_volume_up
+                    name: großes Ohr (lauter)
+                  - entity: sensor.dominik_s_tonie_box_content_audio_id
+              - type: entities
+                title: TeddyCloud Server Einstellungen
+                entities:
+                  - entity: switch.teddycloud_server_cloud_cachecontent_cache_cloud_content_on_local_server
+                    name: Cache Cloud Content
+                  - entity: switch.teddycloud_server_cloud_enabled_generally_enable_cloud_operation
+                    name: Enable Cloud Operation
+      - type: markdown
+        content: " "
+        card_mod:
+          style: |
+            ha-card {
+              background: transparent;
+              box-shadow: none;
+              min-height: 140px;
+            }
+      - type: grid
+        columns: 8
+        square: false
+        card_mod:
+          style: |
+            :host {
+              position: fixed;
+              left: 50%;
+              bottom: 24px;
+              transform: translateX(-50%);
+              width: min(80vw, 2048px);
+              z-index: 1000;
+            }
+            ha-card {
+              width: 100%;
+              margin: 0 auto;
+              border-radius: 20px;
+              backdrop-filter: blur(8px);
+              background: rgba(20, 24, 32, 0.75);
+              box-shadow: 0 12px 32px rgba(0, 0, 0, 0.35);
+              padding: 12px 8px 4px;
+            }
+        cards:
+          - type: button
+            name: Home
+            icon: mdi:home
+            tap_action:
+              action: navigate
+              navigation_path: home
+          - type: button
+            name: Wohnbereich
+            icon: mdi:sofa
+            tap_action:
+              action: navigate
+              navigation_path: wohnbereich
+          - type: button
+            name: Licht
+            icon: mdi:lightbulb-group
+            tap_action:
+              action: navigate
+              navigation_path: licht
+          - type: button
+            name: Musik
+            icon: mdi:music-circle
+            tap_action:
+              action: navigate
+              navigation_path: musik
+          - type: button
+            name: Kameras
+            icon: mdi:cctv
+            tap_action:
+              action: navigate
+              navigation_path: kameras
+          - type: button
+            name: Reinigung
+            icon: mdi:vacuum
+            tap_action:
+              action: navigate
+              navigation_path: reinigung
+          - type: button
+            name: 3D Drucker
+            icon: mdi:printer-3d
+            tap_action:
+              action: navigate
+              navigation_path: drucker
+          - type: button
+            name: Kalender
+            icon: mdi:calendar
+            tap_action:
+              action: navigate
+              navigation_path: kalender
