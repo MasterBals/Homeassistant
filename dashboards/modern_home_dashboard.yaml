@@ -1,0 +1,618 @@
+title: Neo Habitat
+icon: mdi:home-automation
+views:
+  - title: Übersicht
+    path: overview
+    icon: mdi:view-dashboard
+    cards:
+      - type: vertical-stack
+        cards:
+          - type: grid
+            square: false
+            columns: 2
+            cards:
+              - type: weather-forecast
+                entity: weather.forecast_home_2
+              - type: glance
+                title: Klima Highlights
+                entities:
+                  - entity: sensor.sensor_wohnzimmer_temperature
+                    name: Wohnzimmer °C
+                  - entity: sensor.sensor_korridor_temperature
+                    name: Korridor °C
+                  - entity: sensor.aarlo_humidity_kinderzimmer
+                    name: Kinderzimmer %
+                  - entity: sensor.terra_pad_1201_light_sensor
+                    name: Tablet Lux
+          - type: grid
+            title: Schnelle Aktionen
+            columns: 3
+            square: false
+            cards:
+              - type: button
+                entity: scene.heimkommen_mit_musik
+                name: Heimkommen + Musik
+                icon: mdi:home-heart
+                tap_action:
+                  action: call-service
+                  service: scene.turn_on
+                  data:
+                    entity_id: scene.heimkommen_mit_musik
+              - type: button
+                entity: scene.gehen
+                name: Haus verlassen
+                icon: mdi:exit-run
+                tap_action:
+                  action: call-service
+                  service: scene.turn_on
+                  data:
+                    entity_id: scene.gehen
+              - type: button
+                entity: vacuum.dreame
+                name: Reinigung Starten
+                icon: mdi:robot-vacuum
+                tap_action:
+                  action: call-service
+                  service: vacuum.start
+                  data:
+                    entity_id: vacuum.dreame
+                hold_action:
+                  action: call-service
+                  service: vacuum.return_to_base
+                  data:
+                    entity_id: vacuum.dreame
+          - type: grid
+            title: Aktive Medien
+            columns: 2
+            square: false
+            cards:
+              - type: media-control
+                entity: media_player.spotify_dominik_balsiger
+              - type: media-control
+                entity: media_player.wohnzimmer
+          - type: markdown
+            title: Jetzt läuft
+            content: |
+              {% if is_state('media_player.spotify_dominik_balsiger', 'playing') %}
+              **Spotify** · {{ state_attr('media_player.spotify_dominik_balsiger', 'media_title') }} — {{ state_attr('media_player.spotify_dominik_balsiger', 'media_artist') }}
+              {% else %}
+              **Spotify** ist bereit für deine nächste Session.
+              {% endif %}
+
+              {% if is_state('media_player.wohnzimmer', 'playing') %}
+              **Wohnzimmer** · {{ state_attr('media_player.wohnzimmer', 'media_title') }}{% if state_attr('media_player.wohnzimmer', 'media_artist') %} — {{ state_attr('media_player.wohnzimmer', 'media_artist') }}{% endif %}
+              {% else %}
+              **Wohnzimmer Lautsprecher** warten auf eine Auswahl.
+              {% endif %}
+      - type: grid
+        square: false
+        columns: 6
+        cards:
+          - type: button
+            name: Übersicht
+            icon: mdi:view-dashboard
+            tap_action:
+              action: navigate
+              navigation_path: overview
+          - type: button
+            name: Wohnbereich
+            icon: mdi:sofa
+            tap_action:
+              action: navigate
+              navigation_path: wohnbereich
+          - type: button
+            name: Licht
+            icon: mdi:lightbulb-group
+            tap_action:
+              action: navigate
+              navigation_path: licht
+          - type: button
+            name: Musik
+            icon: mdi:music-circle
+            tap_action:
+              action: navigate
+              navigation_path: musik
+          - type: button
+            name: Kameras
+            icon: mdi:cctv
+            tap_action:
+              action: navigate
+              navigation_path: kameras
+          - type: button
+            name: Sensoren
+            icon: mdi:chart-box
+            tap_action:
+              action: navigate
+              navigation_path: sensoren
+
+  - title: Wohnbereich
+    path: wohnbereich
+    icon: mdi:sofa
+    cards:
+      - type: vertical-stack
+        cards:
+          - type: grid
+            title: Lichtzonen
+            columns: 2
+            square: false
+            cards:
+              - type: light
+                entity: light.wohnzimmer
+              - type: light
+                entity: light.kuche
+              - type: light
+                entity: light.esszimmer
+              - type: light
+                entity: light.bar
+              - type: light
+                entity: light.salontisch
+              - type: light
+                entity: light.vitrine_links
+          - type: grid
+            title: Lieblings-Szenen
+            columns: 3
+            square: false
+            cards:
+              - type: button
+                name: Wohnzimmer Relax
+                icon: mdi:white-balance-iridescent
+                tap_action:
+                  action: call-service
+                  service: scene.turn_on
+                  data:
+                    entity_id: scene.wohnzimmer_entspannen
+              - type: button
+                name: Esszimmer Dinner
+                icon: mdi:silverware-fork-knife
+                tap_action:
+                  action: call-service
+                  service: scene.turn_on
+                  data:
+                    entity_id: scene.esszimmer_entspannen
+              - type: button
+                name: Bar Honolulu
+                icon: mdi:palm-tree
+                tap_action:
+                  action: call-service
+                  service: scene.turn_on
+                  data:
+                    entity_id: scene.bar_honolulu
+              - type: button
+                name: Küche Energie
+                icon: mdi:lightning-bolt
+                tap_action:
+                  action: call-service
+                  service: scene.turn_on
+                  data:
+                    entity_id: scene.kuche_energie_tanken
+              - type: button
+                name: Wohnzimmer Lesen
+                icon: mdi:book-open-variant
+                tap_action:
+                  action: call-service
+                  service: scene.turn_on
+                  data:
+                    entity_id: scene.wohnzimmer_lesen
+              - type: button
+                name: Alles Aus
+                icon: mdi:power
+                tap_action:
+                  action: call-service
+                  service: scene.turn_on
+                  data:
+                    entity_id: scene.gehen
+          - type: grid
+            title: Musikzonen
+            columns: 2
+            square: false
+            cards:
+              - type: media-control
+                entity: media_player.wohnzimmer
+              - type: media-control
+                entity: media_player.esszimmer_3
+              - type: media-control
+                entity: media_player.kuche
+              - type: media-control
+                entity: media_player.kinderzimmer
+          - type: markdown
+            title: Stimmung im Wohnbereich
+            content: |
+              {% set laune = states('scene.wohnzimmer_entspannen') %}
+              **Beleuchtung**: Schneller Zugriff auf deine sechs Lieblingsstimmungen. Kombiniere sie mit der Musik deiner Wahl.
+
+              {% if is_state('media_player.wohnzimmer', 'playing') %}
+              Aktuell läuft im Wohnzimmer **{{ state_attr('media_player.wohnzimmer', 'media_title') }}**.
+              {% elif is_state('media_player.spotify_dominik_balsiger', 'playing') %}
+              Spotify streamt **{{ state_attr('media_player.spotify_dominik_balsiger', 'media_title') }}**.
+              {% else %}
+              Wähle eine Playlist aus, um deine Lieblingsszenen zu begleiten.
+              {% endif %}
+      - type: grid
+        square: false
+        columns: 6
+        cards:
+          - type: button
+            name: Übersicht
+            icon: mdi:view-dashboard
+            tap_action:
+              action: navigate
+              navigation_path: overview
+          - type: button
+            name: Wohnbereich
+            icon: mdi:sofa
+            tap_action:
+              action: navigate
+              navigation_path: wohnbereich
+          - type: button
+            name: Licht
+            icon: mdi:lightbulb-group
+            tap_action:
+              action: navigate
+              navigation_path: licht
+          - type: button
+            name: Musik
+            icon: mdi:music-circle
+            tap_action:
+              action: navigate
+              navigation_path: musik
+          - type: button
+            name: Kameras
+            icon: mdi:cctv
+            tap_action:
+              action: navigate
+              navigation_path: kameras
+          - type: button
+            name: Sensoren
+            icon: mdi:chart-box
+            tap_action:
+              action: navigate
+              navigation_path: sensoren
+
+  - title: Licht
+    path: licht
+    icon: mdi:lightbulb-group
+    cards:
+      - type: vertical-stack
+        cards:
+          - type: grid
+            title: Wohnzimmer & Essbereich
+            columns: 2
+            square: false
+            cards:
+              - type: light
+                entity: light.wohnzimmer
+              - type: light
+                entity: light.salontisch
+              - type: light
+                entity: light.vitrine_links
+              - type: light
+                entity: light.esszimmer
+          - type: grid
+            title: Küche & Bar
+            columns: 2
+            square: false
+            cards:
+              - type: light
+                entity: light.kuche
+              - type: light
+                entity: light.bar
+              - type: light
+                entity: light.extended_color_light_4
+              - type: light
+                entity: light.hue_lightstrip_plus_1
+          - type: grid
+            title: Schlaf- & Kinderzimmer
+            columns: 2
+            square: false
+            cards:
+              - type: light
+                entity: light.schlafzimmer
+              - type: light
+                entity: light.kinderzimmer
+              - type: light
+                entity: light.licht_kinderzimmer
+              - type: light
+                entity: light.rileys_lampe
+          - type: grid
+            title: Badezimmer & Flur
+            columns: 2
+            square: false
+            cards:
+              - type: light
+                entity: light.badezimmer
+              - type: light
+                entity: light.gastebad
+              - type: light
+                entity: light.badezimmer_links
+              - type: light
+                entity: light.badezimmer_rechts
+              - type: light
+                entity: light.garderobe
+              - type: light
+                entity: light.korridor
+      - type: grid
+        square: false
+        columns: 6
+        cards:
+          - type: button
+            name: Übersicht
+            icon: mdi:view-dashboard
+            tap_action:
+              action: navigate
+              navigation_path: overview
+          - type: button
+            name: Wohnbereich
+            icon: mdi:sofa
+            tap_action:
+              action: navigate
+              navigation_path: wohnbereich
+          - type: button
+            name: Licht
+            icon: mdi:lightbulb-group
+            tap_action:
+              action: navigate
+              navigation_path: licht
+          - type: button
+            name: Musik
+            icon: mdi:music-circle
+            tap_action:
+              action: navigate
+              navigation_path: musik
+          - type: button
+            name: Kameras
+            icon: mdi:cctv
+            tap_action:
+              action: navigate
+              navigation_path: kameras
+          - type: button
+            name: Sensoren
+            icon: mdi:chart-box
+            tap_action:
+              action: navigate
+              navigation_path: sensoren
+
+  - title: Musik
+    path: musik
+    icon: mdi:music-circle
+    cards:
+      - type: vertical-stack
+        cards:
+          - type: grid
+            title: Multiroom Controller
+            columns: 2
+            square: false
+            cards:
+              - type: media-control
+                entity: media_player.spotify_dominik_balsiger
+              - type: media-control
+                entity: media_player.wohnzimmer
+              - type: media-control
+                entity: media_player.esszimmer_3
+              - type: media-control
+                entity: media_player.kuche
+              - type: media-control
+                entity: media_player.kinderzimmer
+              - type: media-control
+                entity: media_player.tv_wohnzimmer
+          - type: markdown
+            title: Playlist & Stimmung
+            content: |
+              {% set players = [
+                  'media_player.spotify_dominik_balsiger',
+                  'media_player.wohnzimmer',
+                  'media_player.esszimmer_3',
+                  'media_player.kuche',
+                  'media_player.kinderzimmer',
+                  'media_player.tv_wohnzimmer'
+                ] %}
+              {% for player in players %}
+              {% set name = state_attr(player, 'friendly_name') or player.split('.')[-1]|replace('_', ' ')|title %}
+              {% if is_state(player, 'playing') %}
+              • **{{ name }}** spielt **{{ state_attr(player, 'media_title') }}**{% if state_attr(player, 'media_artist') %} – {{ state_attr(player, 'media_artist') }}{% endif %}
+              {% elif is_state(player, 'paused') %}
+              • **{{ name }}** ist pausiert ({{ state_attr(player, 'media_title') or 'keine Auswahl' }})
+              {% else %}
+              • **{{ name }}** wartet auf eine Playlist.
+              {% endif %}
+              {% endfor %}
+      - type: grid
+        square: false
+        columns: 6
+        cards:
+          - type: button
+            name: Übersicht
+            icon: mdi:view-dashboard
+            tap_action:
+              action: navigate
+              navigation_path: overview
+          - type: button
+            name: Wohnbereich
+            icon: mdi:sofa
+            tap_action:
+              action: navigate
+              navigation_path: wohnbereich
+          - type: button
+            name: Licht
+            icon: mdi:lightbulb-group
+            tap_action:
+              action: navigate
+              navigation_path: licht
+          - type: button
+            name: Musik
+            icon: mdi:music-circle
+            tap_action:
+              action: navigate
+              navigation_path: musik
+          - type: button
+            name: Kameras
+            icon: mdi:cctv
+            tap_action:
+              action: navigate
+              navigation_path: kameras
+          - type: button
+            name: Sensoren
+            icon: mdi:chart-box
+            tap_action:
+              action: navigate
+              navigation_path: sensoren
+
+  - title: Kameras
+    path: kameras
+    icon: mdi:cctv
+    cards:
+      - type: grid
+        title: Live-Überblick
+        columns: 2
+        square: false
+        cards:
+          - type: picture-entity
+            entity: camera.aarlo_babybett
+            name: Babybett
+          - type: picture-entity
+            entity: camera.aarlo_kinderzimmer
+            name: Kinderzimmer
+          - type: picture-entity
+            entity: camera.aarlo_katzentor
+            name: Katzentor
+          - type: picture-entity
+            entity: camera.aarlo_dondolo
+            name: Dondolo
+          - type: picture-entity
+            entity: camera.aarlo_3d_drucker
+            name: 3D Drucker
+          - type: picture-entity
+            entity: camera.smart_pet_feeder_with_camera
+            name: Futterstation
+      - type: grid
+        title: Tablet & Map Streams
+        columns: 2
+        square: false
+        cards:
+          - type: picture-entity
+            entity: camera.terra_pad_1201
+            name: Terra Panel
+          - type: picture-entity
+            entity: camera.dreame_map
+            name: Dreame Karte
+      - type: grid
+        square: false
+        columns: 6
+        cards:
+          - type: button
+            name: Übersicht
+            icon: mdi:view-dashboard
+            tap_action:
+              action: navigate
+              navigation_path: overview
+          - type: button
+            name: Wohnbereich
+            icon: mdi:sofa
+            tap_action:
+              action: navigate
+              navigation_path: wohnbereich
+          - type: button
+            name: Licht
+            icon: mdi:lightbulb-group
+            tap_action:
+              action: navigate
+              navigation_path: licht
+          - type: button
+            name: Musik
+            icon: mdi:music-circle
+            tap_action:
+              action: navigate
+              navigation_path: musik
+          - type: button
+            name: Kameras
+            icon: mdi:cctv
+            tap_action:
+              action: navigate
+              navigation_path: kameras
+          - type: button
+            name: Sensoren
+            icon: mdi:chart-box
+            tap_action:
+              action: navigate
+              navigation_path: sensoren
+
+  - title: Sensoren
+    path: sensoren
+    icon: mdi:chart-box
+    cards:
+      - type: grid
+        title: Umwelt
+        columns: 2
+        square: false
+        cards:
+          - type: entities
+            title: Wohnzimmer & Flur
+            entities:
+              - sensor.sensor_wohnzimmer_temperature
+              - sensor.sensor_korridor_temperature
+              - binary_sensor.sensor_korridor_occupancy
+          - type: entities
+            title: Kinderbereich
+            entities:
+              - sensor.aarlo_temperature_kinderzimmer
+              - sensor.aarlo_humidity_kinderzimmer
+              - binary_sensor.aarlo_motion_kinderzimmer
+      - type: grid
+        title: Batterie-Status
+        columns: 2
+        square: false
+        cards:
+          - type: entities
+            title: Tablets & Displays
+            entities:
+              - sensor.terra_pad_1201_battery_level
+              - sensor.sm_t533_battery_level
+              - sensor.terra_pad_1201_battery_state
+              - sensor.sm_t533_battery_state
+          - type: entities
+            title: Sicherheit
+            entities:
+              - sensor.kinderzimmer_batterie
+              - sensor.aarlo_battery_level_babybett
+              - binary_sensor.aarlo_motion_dondolo
+              - binary_sensor.aarlo_motion_babybett
+              - binary_sensor.aarlo_sound_kinderzimmer
+      - type: grid
+        square: false
+        columns: 6
+        cards:
+          - type: button
+            name: Übersicht
+            icon: mdi:view-dashboard
+            tap_action:
+              action: navigate
+              navigation_path: overview
+          - type: button
+            name: Wohnbereich
+            icon: mdi:sofa
+            tap_action:
+              action: navigate
+              navigation_path: wohnbereich
+          - type: button
+            name: Licht
+            icon: mdi:lightbulb-group
+            tap_action:
+              action: navigate
+              navigation_path: licht
+          - type: button
+            name: Musik
+            icon: mdi:music-circle
+            tap_action:
+              action: navigate
+              navigation_path: musik
+          - type: button
+            name: Kameras
+            icon: mdi:cctv
+            tap_action:
+              action: navigate
+              navigation_path: kameras
+          - type: button
+            name: Sensoren
+            icon: mdi:chart-box
+            tap_action:
+              action: navigate
+              navigation_path: sensoren
