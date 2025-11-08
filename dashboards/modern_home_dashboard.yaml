@@ -248,11 +248,11 @@ views:
 
               {% if is_state('media_player.wohnzimmer', 'playing') %}
               Aktuell läuft im Wohnzimmer **{{ state_attr('media_player.wohnzimmer', 'media_title') }}**.
-          {% elif is_state('media_player.spotify_dominik_balsiger', 'playing') %}
-          Spotify streamt **{{ state_attr('media_player.spotify_dominik_balsiger', 'media_title') }}**.
-          {% else %}
-          Wähle eine Playlist aus, um deine Lieblingsszenen zu begleiten.
-          {% endif %}
+              {% elif is_state('media_player.spotify_dominik_balsiger', 'playing') %}
+              Spotify streamt **{{ state_attr('media_player.spotify_dominik_balsiger', 'media_title') }}**.
+              {% else %}
+              Wähle eine Playlist aus, um deine Lieblingsszenen zu begleiten.
+              {% endif %}
       - type: markdown
         content: " "
         card_mod:
@@ -483,16 +483,16 @@ views:
                   'media_player.kinderzimmer',
                   'media_player.tv_wohnzimmer'
                 ] %}
-          {% for player in players %}
-          {% set name = state_attr(player, 'friendly_name') or player.split('.')[-1]|replace('_', ' ')|title %}
-          {% if is_state(player, 'playing') %}
-          • **{{ name }}** spielt **{{ state_attr(player, 'media_title') }}**{% if state_attr(player, 'media_artist') %} – {{ state_attr(player, 'media_artist') }}{% endif %}
-          {% elif is_state(player, 'paused') %}
-          • **{{ name }}** ist pausiert ({{ state_attr(player, 'media_title') or 'keine Auswahl' }})
-          {% else %}
-          • **{{ name }}** wartet auf eine Playlist.
-          {% endif %}
-          {% endfor %}
+              {% for player in players %}
+              {% set name = state_attr(player, 'friendly_name') or player.split('.')[-1]|replace('_', ' ')|title %}
+              {% if is_state(player, 'playing') %}
+              • **{{ name }}** spielt **{{ state_attr(player, 'media_title') }}**{% if state_attr(player, 'media_artist') %} – {{ state_attr(player, 'media_artist') }}{% endif %}
+              {% elif is_state(player, 'paused') %}
+              • **{{ name }}** ist pausiert ({{ state_attr(player, 'media_title') or 'keine Auswahl' }})
+              {% else %}
+              • **{{ name }}** wartet auf eine Playlist.
+              {% endif %}
+              {% endfor %}
       - type: markdown
         content: " "
         card_mod:
