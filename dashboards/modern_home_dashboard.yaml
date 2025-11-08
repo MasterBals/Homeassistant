@@ -70,11 +70,11 @@ views:
                 entity: media_player.spotify_dominik_balsiger
               - type: media-control
                 entity: media_player.wohnzimmer
-          - type: markdown
-            title: Jetzt läuft
-            content: |
-              {% if is_state('media_player.spotify_dominik_balsiger', 'playing') %}
-              **Spotify** · {{ state_attr('media_player.spotify_dominik_balsiger', 'media_title') }} — {{ state_attr('media_player.spotify_dominik_balsiger', 'media_artist') }}
+      - type: markdown
+        title: Jetzt läuft
+        content: |
+          {% if is_state('media_player.spotify_dominik_balsiger', 'playing') %}
+          **Spotify** · {{ state_attr('media_player.spotify_dominik_balsiger', 'media_title') }} — {{ state_attr('media_player.spotify_dominik_balsiger', 'media_artist') }}
               {% else %}
               **Spotify** ist bereit für deine nächste Session.
               {% endif %}
@@ -84,23 +84,34 @@ views:
               {% else %}
               **Wohnzimmer Lautsprecher** warten auf eine Auswahl.
               {% endif %}
+      - type: markdown
+        content: " "
+        card_mod:
+          style: |
+            ha-card {
+              background: transparent;
+              box-shadow: none;
+              min-height: 120px;
+            }
       - type: grid
         square: false
         columns: 6
         card_mod:
           style: |
+            :host {
+              position: fixed;
+              left: 50%;
+              bottom: 20px;
+              transform: translateX(-50%);
+              width: min(80vw, 1200px);
+              z-index: 1000;
+            }
             ha-card {
-              position: sticky;
-              bottom: 0;
-              width: 80%;
+              width: 100%;
               margin: 0 auto;
               border-radius: 24px;
               box-shadow: var(--ha-card-box-shadow, 0px 6px 16px rgba(0, 0, 0, 0.2));
               padding-bottom: 4px;
-            }
-            :host {
-              display: flex;
-              justify-content: center;
             }
         cards:
           - type: button
@@ -237,28 +248,39 @@ views:
 
               {% if is_state('media_player.wohnzimmer', 'playing') %}
               Aktuell läuft im Wohnzimmer **{{ state_attr('media_player.wohnzimmer', 'media_title') }}**.
-              {% elif is_state('media_player.spotify_dominik_balsiger', 'playing') %}
-              Spotify streamt **{{ state_attr('media_player.spotify_dominik_balsiger', 'media_title') }}**.
-              {% else %}
-              Wähle eine Playlist aus, um deine Lieblingsszenen zu begleiten.
-              {% endif %}
+          {% elif is_state('media_player.spotify_dominik_balsiger', 'playing') %}
+          Spotify streamt **{{ state_attr('media_player.spotify_dominik_balsiger', 'media_title') }}**.
+          {% else %}
+          Wähle eine Playlist aus, um deine Lieblingsszenen zu begleiten.
+          {% endif %}
+      - type: markdown
+        content: " "
+        card_mod:
+          style: |
+            ha-card {
+              background: transparent;
+              box-shadow: none;
+              min-height: 120px;
+            }
       - type: grid
         square: false
         columns: 6
         card_mod:
           style: |
+            :host {
+              position: fixed;
+              left: 50%;
+              bottom: 20px;
+              transform: translateX(-50%);
+              width: min(80vw, 1200px);
+              z-index: 1000;
+            }
             ha-card {
-              position: sticky;
-              bottom: 0;
-              width: 80%;
+              width: 100%;
               margin: 0 auto;
               border-radius: 24px;
               box-shadow: var(--ha-card-box-shadow, 0px 6px 16px rgba(0, 0, 0, 0.2));
               padding-bottom: 4px;
-            }
-            :host {
-              display: flex;
-              justify-content: center;
             }
         cards:
           - type: button
@@ -360,23 +382,34 @@ views:
                 entity: light.garderobe
               - type: light
                 entity: light.korridor
+      - type: markdown
+        content: " "
+        card_mod:
+          style: |
+            ha-card {
+              background: transparent;
+              box-shadow: none;
+              min-height: 120px;
+            }
       - type: grid
         square: false
         columns: 6
         card_mod:
           style: |
+            :host {
+              position: fixed;
+              left: 50%;
+              bottom: 20px;
+              transform: translateX(-50%);
+              width: min(80vw, 1200px);
+              z-index: 1000;
+            }
             ha-card {
-              position: sticky;
-              bottom: 0;
-              width: 80%;
+              width: 100%;
               margin: 0 auto;
               border-radius: 24px;
               box-shadow: var(--ha-card-box-shadow, 0px 6px 16px rgba(0, 0, 0, 0.2));
               padding-bottom: 4px;
-            }
-            :host {
-              display: flex;
-              justify-content: center;
             }
         cards:
           - type: button
@@ -450,33 +483,44 @@ views:
                   'media_player.kinderzimmer',
                   'media_player.tv_wohnzimmer'
                 ] %}
-              {% for player in players %}
-              {% set name = state_attr(player, 'friendly_name') or player.split('.')[-1]|replace('_', ' ')|title %}
-              {% if is_state(player, 'playing') %}
-              • **{{ name }}** spielt **{{ state_attr(player, 'media_title') }}**{% if state_attr(player, 'media_artist') %} – {{ state_attr(player, 'media_artist') }}{% endif %}
-              {% elif is_state(player, 'paused') %}
-              • **{{ name }}** ist pausiert ({{ state_attr(player, 'media_title') or 'keine Auswahl' }})
-              {% else %}
-              • **{{ name }}** wartet auf eine Playlist.
-              {% endif %}
-              {% endfor %}
+          {% for player in players %}
+          {% set name = state_attr(player, 'friendly_name') or player.split('.')[-1]|replace('_', ' ')|title %}
+          {% if is_state(player, 'playing') %}
+          • **{{ name }}** spielt **{{ state_attr(player, 'media_title') }}**{% if state_attr(player, 'media_artist') %} – {{ state_attr(player, 'media_artist') }}{% endif %}
+          {% elif is_state(player, 'paused') %}
+          • **{{ name }}** ist pausiert ({{ state_attr(player, 'media_title') or 'keine Auswahl' }})
+          {% else %}
+          • **{{ name }}** wartet auf eine Playlist.
+          {% endif %}
+          {% endfor %}
+      - type: markdown
+        content: " "
+        card_mod:
+          style: |
+            ha-card {
+              background: transparent;
+              box-shadow: none;
+              min-height: 120px;
+            }
       - type: grid
         square: false
         columns: 6
         card_mod:
           style: |
+            :host {
+              position: fixed;
+              left: 50%;
+              bottom: 20px;
+              transform: translateX(-50%);
+              width: min(80vw, 1200px);
+              z-index: 1000;
+            }
             ha-card {
-              position: sticky;
-              bottom: 0;
-              width: 80%;
+              width: 100%;
               margin: 0 auto;
               border-radius: 24px;
               box-shadow: var(--ha-card-box-shadow, 0px 6px 16px rgba(0, 0, 0, 0.2));
               padding-bottom: 4px;
-            }
-            :host {
-              display: flex;
-              justify-content: center;
             }
         cards:
           - type: button
@@ -554,23 +598,34 @@ views:
           - type: picture-entity
             entity: camera.dreame_map
             name: Dreame Karte
+      - type: markdown
+        content: " "
+        card_mod:
+          style: |
+            ha-card {
+              background: transparent;
+              box-shadow: none;
+              min-height: 120px;
+            }
       - type: grid
         square: false
         columns: 6
         card_mod:
           style: |
+            :host {
+              position: fixed;
+              left: 50%;
+              bottom: 20px;
+              transform: translateX(-50%);
+              width: min(80vw, 1200px);
+              z-index: 1000;
+            }
             ha-card {
-              position: sticky;
-              bottom: 0;
-              width: 80%;
+              width: 100%;
               margin: 0 auto;
               border-radius: 24px;
               box-shadow: var(--ha-card-box-shadow, 0px 6px 16px rgba(0, 0, 0, 0.2));
               padding-bottom: 4px;
-            }
-            :host {
-              display: flex;
-              justify-content: center;
             }
         cards:
           - type: button
@@ -651,23 +706,34 @@ views:
               - binary_sensor.aarlo_motion_dondolo
               - binary_sensor.aarlo_motion_babybett
               - binary_sensor.aarlo_sound_kinderzimmer
+      - type: markdown
+        content: " "
+        card_mod:
+          style: |
+            ha-card {
+              background: transparent;
+              box-shadow: none;
+              min-height: 120px;
+            }
       - type: grid
         square: false
         columns: 6
         card_mod:
           style: |
+            :host {
+              position: fixed;
+              left: 50%;
+              bottom: 20px;
+              transform: translateX(-50%);
+              width: min(80vw, 1200px);
+              z-index: 1000;
+            }
             ha-card {
-              position: sticky;
-              bottom: 0;
-              width: 80%;
+              width: 100%;
               margin: 0 auto;
               border-radius: 24px;
               box-shadow: var(--ha-card-box-shadow, 0px 6px 16px rgba(0, 0, 0, 0.2));
               padding-bottom: 4px;
-            }
-            :host {
-              display: flex;
-              justify-content: center;
             }
         cards:
           - type: button
