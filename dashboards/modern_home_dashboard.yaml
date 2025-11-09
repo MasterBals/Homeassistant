@@ -187,28 +187,28 @@ views:
               background: rgba(0, 0, 0, 0.3)
               border-radius: 15px
               z-index: 1000
-            1_link: /dashboard-smart-home-dashboard/home
+            1_link: /smart-home-dashboard/home
             1_name: Home
             1_icon: mdi:home
-            2_link: /dashboard-smart-home-dashboard/wohnbereich
+            2_link: /smart-home-dashboard/wohnbereich
             2_name: Wohnbereich
             2_icon: mdi:sofa
-            3_link: /dashboard-smart-home-dashboard/licht
+            3_link: /smart-home-dashboard/licht
             3_name: Licht
             3_icon: mdi:lightbulb-group
-            4_link: /dashboard-smart-home-dashboard/musik
+            4_link: /smart-home-dashboard/musik
             4_name: Musik
             4_icon: mdi:music-circle
-            5_link: /dashboard-smart-home-dashboard/kameras
+            5_link: /smart-home-dashboard/kameras
             5_name: Kameras
             5_icon: mdi:cctv
-            6_link: /dashboard-smart-home-dashboard/reinigung
+            6_link: /smart-home-dashboard/reinigung
             6_name: Reinigung
             6_icon: mdi:vacuum
-            7_link: /dashboard-smart-home-dashboard/drucker
+            7_link: /smart-home-dashboard/drucker
             7_name: 3D Drucker
             7_icon: mdi:printer-3d
-            8_link: /dashboard-smart-home-dashboard/kalender
+            8_link: /smart-home-dashboard/kalender
             8_name: Kalender
             8_icon: mdi:calendar
             width_desktop: 80%
@@ -317,28 +317,28 @@ views:
           background: rgba(0, 0, 0, 0.3)
           border-radius: 15px
           z-index: 1000
-        1_link: /dashboard-smart-home-dashboard/home
+        1_link: /smart-home-dashboard/home
         1_name: Home
         1_icon: mdi:home
-        2_link: /dashboard-smart-home-dashboard/wohnbereich
+        2_link: /smart-home-dashboard/wohnbereich
         2_name: Wohnbereich
         2_icon: mdi:sofa
-        3_link: /dashboard-smart-home-dashboard/licht
+        3_link: /smart-home-dashboard/licht
         3_name: Licht
         3_icon: mdi:lightbulb-group
-        4_link: /dashboard-smart-home-dashboard/musik
+        4_link: /smart-home-dashboard/musik
         4_name: Musik
         4_icon: mdi:music-circle
-        5_link: /dashboard-smart-home-dashboard/kameras
+        5_link: /smart-home-dashboard/kameras
         5_name: Kameras
         5_icon: mdi:cctv
-        6_link: /dashboard-smart-home-dashboard/reinigung
+        6_link: /smart-home-dashboard/reinigung
         6_name: Reinigung
         6_icon: mdi:vacuum
-        7_link: /dashboard-smart-home-dashboard/drucker
+        7_link: /smart-home-dashboard/drucker
         7_name: 3D Drucker
         7_icon: mdi:printer-3d
-        8_link: /dashboard-smart-home-dashboard/kalender
+        8_link: /smart-home-dashboard/kalender
         8_name: Kalender
         8_icon: mdi:calendar
         width_desktop: 80%
@@ -468,28 +468,28 @@ views:
           background: rgba(0, 0, 0, 0.3)
           border-radius: 15px
           z-index: 1000
-        1_link: /dashboard-smart-home-dashboard/home
+        1_link: /smart-home-dashboard/home
         1_name: Home
         1_icon: mdi:home
-        2_link: /dashboard-smart-home-dashboard/wohnbereich
+        2_link: /smart-home-dashboard/wohnbereich
         2_name: Wohnbereich
         2_icon: mdi:sofa
-        3_link: /dashboard-smart-home-dashboard/licht
+        3_link: /smart-home-dashboard/licht
         3_name: Licht
         3_icon: mdi:lightbulb-group
-        4_link: /dashboard-smart-home-dashboard/musik
+        4_link: /smart-home-dashboard/musik
         4_name: Musik
         4_icon: mdi:music-circle
-        5_link: /dashboard-smart-home-dashboard/kameras
+        5_link: /smart-home-dashboard/kameras
         5_name: Kameras
         5_icon: mdi:cctv
-        6_link: /dashboard-smart-home-dashboard/reinigung
+        6_link: /smart-home-dashboard/reinigung
         6_name: Reinigung
         6_icon: mdi:vacuum
-        7_link: /dashboard-smart-home-dashboard/drucker
+        7_link: /smart-home-dashboard/drucker
         7_name: 3D Drucker
         7_icon: mdi:printer-3d
-        8_link: /dashboard-smart-home-dashboard/kalender
+        8_link: /smart-home-dashboard/kalender
         8_name: Kalender
         8_icon: mdi:calendar
         width_desktop: 80%
@@ -607,28 +607,28 @@ views:
           background: rgba(0, 0, 0, 0.3)
           border-radius: 15px
           z-index: 1000
-        1_link: /dashboard-smart-home-dashboard/home
+        1_link: /smart-home-dashboard/home
         1_name: Home
         1_icon: mdi:home
-        2_link: /dashboard-smart-home-dashboard/wohnbereich
+        2_link: /smart-home-dashboard/wohnbereich
         2_name: Wohnbereich
         2_icon: mdi:sofa
-        3_link: /dashboard-smart-home-dashboard/licht
+        3_link: /smart-home-dashboard/licht
         3_name: Licht
         3_icon: mdi:lightbulb-group
-        4_link: /dashboard-smart-home-dashboard/musik
+        4_link: /smart-home-dashboard/musik
         4_name: Musik
         4_icon: mdi:music-circle
-        5_link: /dashboard-smart-home-dashboard/kameras
+        5_link: /smart-home-dashboard/kameras
         5_name: Kameras
         5_icon: mdi:cctv
-        6_link: /dashboard-smart-home-dashboard/reinigung
+        6_link: /smart-home-dashboard/reinigung
         6_name: Reinigung
         6_icon: mdi:vacuum
-        7_link: /dashboard-smart-home-dashboard/drucker
+        7_link: /smart-home-dashboard/drucker
         7_name: 3D Drucker
         7_icon: mdi:printer-3d
-        8_link: /dashboard-smart-home-dashboard/kalender
+        8_link: /smart-home-dashboard/kalender
         8_name: Kalender
         8_icon: mdi:calendar
         width_desktop: 80%
@@ -690,28 +690,28 @@ views:
           background: rgba(0, 0, 0, 0.3)
           border-radius: 15px
           z-index: 1000
-        1_link: /dashboard-smart-home-dashboard/home
+        1_link: /smart-home-dashboard/home
         1_name: Home
         1_icon: mdi:home
-        2_link: /dashboard-smart-home-dashboard/wohnbereich
+        2_link: /smart-home-dashboard/wohnbereich
         2_name: Wohnbereich
         2_icon: mdi:sofa
-        3_link: /dashboard-smart-home-dashboard/licht
+        3_link: /smart-home-dashboard/licht
         3_name: Licht
         3_icon: mdi:lightbulb-group
-        4_link: /dashboard-smart-home-dashboard/musik
+        4_link: /smart-home-dashboard/musik
         4_name: Musik
         4_icon: mdi:music-circle
-        5_link: /dashboard-smart-home-dashboard/kameras
+        5_link: /smart-home-dashboard/kameras
         5_name: Kameras
         5_icon: mdi:cctv
-        6_link: /dashboard-smart-home-dashboard/reinigung
+        6_link: /smart-home-dashboard/reinigung
         6_name: Reinigung
         6_icon: mdi:vacuum
-        7_link: /dashboard-smart-home-dashboard/drucker
+        7_link: /smart-home-dashboard/drucker
         7_name: 3D Drucker
         7_icon: mdi:printer-3d
-        8_link: /dashboard-smart-home-dashboard/kalender
+        8_link: /smart-home-dashboard/kalender
         8_name: Kalender
         8_icon: mdi:calendar
         width_desktop: 80%
@@ -843,28 +843,28 @@ views:
           background: rgba(0, 0, 0, 0.3)
           border-radius: 15px
           z-index: 1000
-        1_link: /dashboard-smart-home-dashboard/home
+        1_link: /smart-home-dashboard/home
         1_name: Home
         1_icon: mdi:home
-        2_link: /dashboard-smart-home-dashboard/wohnbereich
+        2_link: /smart-home-dashboard/wohnbereich
         2_name: Wohnbereich
         2_icon: mdi:sofa
-        3_link: /dashboard-smart-home-dashboard/licht
+        3_link: /smart-home-dashboard/licht
         3_name: Licht
         3_icon: mdi:lightbulb-group
-        4_link: /dashboard-smart-home-dashboard/musik
+        4_link: /smart-home-dashboard/musik
         4_name: Musik
         4_icon: mdi:music-circle
-        5_link: /dashboard-smart-home-dashboard/kameras
+        5_link: /smart-home-dashboard/kameras
         5_name: Kameras
         5_icon: mdi:cctv
-        6_link: /dashboard-smart-home-dashboard/reinigung
+        6_link: /smart-home-dashboard/reinigung
         6_name: Reinigung
         6_icon: mdi:vacuum
-        7_link: /dashboard-smart-home-dashboard/drucker
+        7_link: /smart-home-dashboard/drucker
         7_name: 3D Drucker
         7_icon: mdi:printer-3d
-        8_link: /dashboard-smart-home-dashboard/kalender
+        8_link: /smart-home-dashboard/kalender
         8_name: Kalender
         8_icon: mdi:calendar
         width_desktop: 80%
@@ -1053,28 +1053,28 @@ views:
               background: rgba(0, 0, 0, 0.3)
               border-radius: 15px
               z-index: 1000
-            1_link: /dashboard-smart-home-dashboard/home
+            1_link: /smart-home-dashboard/home
             1_name: Home
             1_icon: mdi:home
-            2_link: /dashboard-smart-home-dashboard/wohnbereich
+            2_link: /smart-home-dashboard/wohnbereich
             2_name: Wohnbereich
             2_icon: mdi:sofa
-            3_link: /dashboard-smart-home-dashboard/licht
+            3_link: /smart-home-dashboard/licht
             3_name: Licht
             3_icon: mdi:lightbulb-group
-            4_link: /dashboard-smart-home-dashboard/musik
+            4_link: /smart-home-dashboard/musik
             4_name: Musik
             4_icon: mdi:music-circle
-            5_link: /dashboard-smart-home-dashboard/kameras
+            5_link: /smart-home-dashboard/kameras
             5_name: Kameras
             5_icon: mdi:cctv
-            6_link: /dashboard-smart-home-dashboard/reinigung
+            6_link: /smart-home-dashboard/reinigung
             6_name: Reinigung
             6_icon: mdi:vacuum
-            7_link: /dashboard-smart-home-dashboard/drucker
+            7_link: /smart-home-dashboard/drucker
             7_name: 3D Drucker
             7_icon: mdi:printer-3d
-            8_link: /dashboard-smart-home-dashboard/kalender
+            8_link: /smart-home-dashboard/kalender
             8_name: Kalender
             8_icon: mdi:calendar
             width_desktop: 80%
@@ -1142,28 +1142,28 @@ views:
           background: rgba(0, 0, 0, 0.3)
           border-radius: 15px
           z-index: 1000
-        1_link: /dashboard-smart-home-dashboard/home
+        1_link: /smart-home-dashboard/home
         1_name: Home
         1_icon: mdi:home
-        2_link: /dashboard-smart-home-dashboard/wohnbereich
+        2_link: /smart-home-dashboard/wohnbereich
         2_name: Wohnbereich
         2_icon: mdi:sofa
-        3_link: /dashboard-smart-home-dashboard/licht
+        3_link: /smart-home-dashboard/licht
         3_name: Licht
         3_icon: mdi:lightbulb-group
-        4_link: /dashboard-smart-home-dashboard/musik
+        4_link: /smart-home-dashboard/musik
         4_name: Musik
         4_icon: mdi:music-circle
-        5_link: /dashboard-smart-home-dashboard/kameras
+        5_link: /smart-home-dashboard/kameras
         5_name: Kameras
         5_icon: mdi:cctv
-        6_link: /dashboard-smart-home-dashboard/reinigung
+        6_link: /smart-home-dashboard/reinigung
         6_name: Reinigung
         6_icon: mdi:vacuum
-        7_link: /dashboard-smart-home-dashboard/drucker
+        7_link: /smart-home-dashboard/drucker
         7_name: 3D Drucker
         7_icon: mdi:printer-3d
-        8_link: /dashboard-smart-home-dashboard/kalender
+        8_link: /smart-home-dashboard/kalender
         8_name: Kalender
         8_icon: mdi:calendar
         width_desktop: 80%
@@ -1236,28 +1236,28 @@ views:
           background: rgba(0, 0, 0, 0.3)
           border-radius: 15px
           z-index: 1000
-        1_link: /dashboard-smart-home-dashboard/home
+        1_link: /smart-home-dashboard/home
         1_name: Home
         1_icon: mdi:home
-        2_link: /dashboard-smart-home-dashboard/wohnbereich
+        2_link: /smart-home-dashboard/wohnbereich
         2_name: Wohnbereich
         2_icon: mdi:sofa
-        3_link: /dashboard-smart-home-dashboard/licht
+        3_link: /smart-home-dashboard/licht
         3_name: Licht
         3_icon: mdi:lightbulb-group
-        4_link: /dashboard-smart-home-dashboard/musik
+        4_link: /smart-home-dashboard/musik
         4_name: Musik
         4_icon: mdi:music-circle
-        5_link: /dashboard-smart-home-dashboard/kameras
+        5_link: /smart-home-dashboard/kameras
         5_name: Kameras
         5_icon: mdi:cctv
-        6_link: /dashboard-smart-home-dashboard/reinigung
+        6_link: /smart-home-dashboard/reinigung
         6_name: Reinigung
         6_icon: mdi:vacuum
-        7_link: /dashboard-smart-home-dashboard/drucker
+        7_link: /smart-home-dashboard/drucker
         7_name: 3D Drucker
         7_icon: mdi:printer-3d
-        8_link: /dashboard-smart-home-dashboard/kalender
+        8_link: /smart-home-dashboard/kalender
         8_name: Kalender
         8_icon: mdi:calendar
         width_desktop: 80%
