@@ -1,5 +1,11 @@
 # Changelog
 
+## 1.0.3
+
+- Improve the Lovelace card with visual editor options for selecting waste types.
+- Add separate illustrated assets for Karton, Papier, Kompost and Kehricht.
+- Show the nearest collection more prominently with relative dates for upcoming collections.
+
 ## 1.0.2
 
 - Remove binary brand icon so repository changes can be created in environments that reject binary files in pull requests.
