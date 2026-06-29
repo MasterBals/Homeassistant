@@ -5,6 +5,7 @@ from __future__ import annotations
 import asyncio
 from datetime import date
 import logging
+from typing import Any
 
 from homeassistant.helpers.aiohttp_client import async_get_clientsession
 from homeassistant.core import HomeAssistant
@@ -26,7 +27,7 @@ class ChurWasteApi:
         self._hass = hass
         self._url = url
 
-    async def _request(self) -> str:
+    async def _request(self, params: dict[str, Any] | None = None) -> str:
         session = async_get_clientsession(self._hass)
         last_error: Exception | None = None
         for attempt in range(3):
@@ -34,6 +35,7 @@ class ChurWasteApi:
                 async with asyncio.timeout(20):
                     response = await session.get(
                         self._url,
+                        params=params,
                         headers={"User-Agent": "HomeAssistant ChurAbfall/1.0"},
                     )
                     response.raise_for_status()
@@ -54,5 +56,11 @@ class ChurWasteApi:
         return streets
 
     async def async_get_events(self, streets: list[Street]) -> list[WasteEvent]:
-        html = await self._request()
-        return parse_events(html, streets, date.today())
+        events: list[WasteEvent] = []
+        today = date.today()
+        for street in streets:
+            html = await self._request(
+                {"strassenabschnitt[strassenabschnittId]": street.id}
+            )
+            events.extend(parse_events(html, [street], today))
+        return sorted(events, key=lambda event: (event.date, event.waste_type, event.street))
