@@ -1,5 +1,10 @@
 # Changelog
 
+## 1.1.0
+
+- Add the Chur Kultur custom integration for filtered events from chur-kultur.ch.
+- Add a Chur Kultur Lovelace card with image list and detail popup.
+
 ## 1.0.5
 
 - Refine Lovelace card bin artwork with transparent SVGs and waste-type symbols on each bin.
