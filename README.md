@@ -1,3 +1,5 @@
+# Homeassistant
+Dashboards und Cards
 # Chur Abfall
 
 Home Assistant Custom Integration für Abfalltermine der Stadt Chur. Die Integration liest ausschliesslich die offizielle Quelle `https://www.chur.ch/abfallstrassenabschnitte`, ermittelt Strassenabschnitte automatisch und stellt Termine als Sensoren, Kalender und Lovelace Card bereit.
