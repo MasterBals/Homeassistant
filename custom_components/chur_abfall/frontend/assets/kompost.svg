@@ -1,20 +1,26 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 256 256" role="img" aria-label="Kompost">
-  <defs><linearGradient id="bg" x1="0" y1="0" x2="1" y2="1"><stop stop-color="#f0fff4"/><stop offset="1" stop-color="#fffaf0"/></linearGradient><linearGradient id="bin" x1="0" y1="32" x2="0" y2="230"><stop stop-color="#47b864"/><stop offset="1" stop-color="#176b35"/></linearGradient><filter id="s" x="-20%" y="-20%" width="140%" height="150%"><feDropShadow dx="0" dy="9" stdDeviation="7" flood-color="#064e3b" flood-opacity=".18"/></filter></defs>
-  <rect width="256" height="256" rx="34" fill="url(#bg)"/>
-  <g filter="url(#s)">
-    <path d="M58 84h140l-14 132c-1.3 12-11 20-23 20H95c-12 0-21.7-8-23-20L58 84Z" fill="url(#bin)"/>
-    <rect x="45" y="70" width="166" height="29" rx="14" fill="#2f9d50"/>
-    <circle cx="83" cy="231" r="13" fill="#1f2937"/><circle cx="173" cy="231" r="13" fill="#1f2937"/>
+  <defs>
+    <linearGradient id="bin" x1="0" y1="70" x2="0" y2="230"><stop stop-color="#45b765"/><stop offset="1" stop-color="#176b35"/></linearGradient>
+    <filter id="shadow" x="-20%" y="-20%" width="140%" height="150%"><feDropShadow dx="0" dy="9" stdDeviation="7" flood-color="#064e3b" flood-opacity=".18"/></filter>
+    <style>
+      .leaf-a{animation:leafA 2.8s ease-in-out infinite}.leaf-b{animation:leafB 2.8s ease-in-out infinite .35s}.core{animation:core 2.8s ease-in-out infinite .65s}
+      @keyframes leafA{0%{transform:translate(-8px,-42px) rotate(-24deg);opacity:0}20%,70%{opacity:1}82%,100%{transform:translate(7px,18px) rotate(8deg);opacity:0}}
+      @keyframes leafB{0%{transform:translate(9px,-36px) rotate(21deg);opacity:0}20%,70%{opacity:1}82%,100%{transform:translate(-6px,16px) rotate(-6deg);opacity:0}}
+      @keyframes core{0%{transform:translate(0,-30px);opacity:0}20%,70%{opacity:1}82%,100%{transform:translate(0,12px);opacity:0}}
+    </style>
+  </defs>
+  <ellipse cx="128" cy="232" rx="71" ry="13" fill="#0f172a" opacity=".14"/>
+  <g class="leaf-a"><ellipse cx="91" cy="55" rx="15" ry="30" fill="#7ac943" transform="rotate(-35 91 55)"/><path d="M81 68l23-24" stroke="#2f6b2f" stroke-width="4" stroke-linecap="round" opacity=".55"/></g>
+  <g class="leaf-b"><ellipse cx="162" cy="53" rx="16" ry="31" fill="#65b83c" transform="rotate(28 162 53)"/><path d="M151 39l22 28" stroke="#2f6b2f" stroke-width="4" stroke-linecap="round" opacity=".55"/></g>
+  <g class="core"><path d="M109 75c12 10 27 10 39-1" stroke="#8b5e34" stroke-width="8" stroke-linecap="round"/><path d="M143 74c14 3 25 13 31 28" stroke="#7c4a22" stroke-width="7" stroke-linecap="round"/></g>
+  <g filter="url(#shadow)">
+    <path d="M59 83h138l-14 131c-1 12-11 21-23 21H96c-12 0-22-9-23-21L59 83Z" fill="url(#bin)"/>
+    <rect x="45" y="70" width="166" height="28" rx="14" fill="#2f9d50"/>
+    <circle cx="84" cy="231" r="13" fill="#1f2937"/><circle cx="172" cy="231" r="13" fill="#1f2937"/>
   </g>
-  <g filter="url(#s)">
-    <ellipse cx="89" cy="58" rx="14" ry="28" fill="#7ac943" transform="rotate(-35 89 58)"/>
-    <ellipse cx="139" cy="50" rx="16" ry="31" fill="#65b83c" transform="rotate(25 139 50)"/>
-    <path d="M74 75c21-6 41 2 51 22-29 6-47-2-51-22Z" fill="#8bcf4a"/>
-    <path d="M151 87c11-19 31-25 52-17-10 22-29 28-52 17Z" fill="#6fbf45"/>
-    <path d="M107 83c-1-20 10-36 29-43 6 25-5 40-29 43Z" fill="#3fa34d"/>
-    <path d="M93 66l-22 17M135 54l-4 28M171 78l27-8" stroke="#2f6b2f" stroke-width="4" stroke-linecap="round" opacity=".55"/>
-    <path d="M108 88c11 10 28 10 40-1" stroke="#8b5e34" stroke-width="8" stroke-linecap="round"/>
-    <path d="M156 83c12 4 20 12 25 24" stroke="#7c4a22" stroke-width="7" stroke-linecap="round"/>
+  <g fill="none" stroke="#fff" stroke-width="8" stroke-linecap="round" stroke-linejoin="round" opacity=".96">
+    <path d="M128 190c-3-33 10-59 40-73 8 34-6 60-40 73Z"/>
+    <path d="M128 190c-8-30-29-50-62-55 4 36 25 56 62 55Z"/>
+    <path d="M128 190v-45M101 158l27 32M151 150l-23 40"/>
   </g>
-  <path d="M112 150h25l-9-13 8-6 22 31-22 31-8-6 9-13H96v-24h16Zm36 21h25l-9 13 8 6 22-31-22-31-8 6 9 13h-25v24Z" fill="white" opacity=".92"/>
 </svg>
