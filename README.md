@@ -50,6 +50,25 @@ compact: false
 - `chur_abfall.reload`: Integration neu laden.
 - `chur_abfall.export`: Termine als Service-Antwort exportieren.
 
+# Chur Kultur
+
+Home Assistant Custom Integration für Veranstaltungen von `https://www.chur-kultur.ch/de/agenda`.
+Die Integration lädt die Agenda mit konfigurierbarem Zeitraum, Tag-IDs und optionalem Suchtext.
+
+## Dashboard Karte
+
+Die Lovelace Card wird automatisch als Frontend-Modul registriert.
+
+```yaml
+type: custom:chur-kultur-card
+entity: sensor.chur_kultur_veranstaltungen
+title: Chur Kultur
+max_items: 8
+show_images: true
+```
+
+Ein Klick auf einen Eintrag öffnet ein Detail-Popup mit Bild, Ort, Kategorie, Beschreibung und Link zur Originalseite.
+
 ## Troubleshooting
 
 - Wenn keine Strassen erscheinen, prüfe die Erreichbarkeit der offiziellen Churer Webseite aus Home Assistant.

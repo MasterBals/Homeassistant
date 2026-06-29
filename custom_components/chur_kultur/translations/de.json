@@ -1,0 +1,29 @@
+{
+  "config": {
+    "step": {
+      "user": {
+        "title": "Chur Kultur",
+        "description": "Filtere Veranstaltungen von chur-kultur.ch.",
+        "data": {
+          "days": "Tage in die Zukunft",
+          "max_events": "Maximale Anzahl Veranstaltungen",
+          "tag_ids": "Tag-IDs",
+          "search": "Suchtext"
+        }
+      }
+    }
+  },
+  "options": {
+    "step": {
+      "init": {
+        "title": "Chur Kultur Optionen",
+        "data": {
+          "days": "Tage in die Zukunft",
+          "max_events": "Maximale Anzahl Veranstaltungen",
+          "tag_ids": "Tag-IDs",
+          "search": "Suchtext"
+        }
+      }
+    }
+  }
+}

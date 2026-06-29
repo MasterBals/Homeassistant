@@ -83,14 +83,18 @@ def parse_date(value: str, today: date | None = None) -> date | None:
     """Parse a Swiss or machine-readable date."""
     text = re.sub(r"\s+", " ", value.strip())
     year = (today or date.today()).year
-    candidates = [text]
-    candidates.extend(
+    candidates = [
         match.group(0)
         for match in re.finditer(
             r"\d{4}-\d{1,2}-\d{1,2}|\d{8}|\d{1,2}\.\d{1,2}\.\d{2,4}|\d{1,2}\.\d{1,2}\.",
             text,
         )
-    )
+    ]
+    if not candidates and re.fullmatch(
+        r"\d{4}-\d{1,2}-\d{1,2}|\d{8}|\d{1,2}\.\d{1,2}\.\d{2,4}|\d{1,2}\.\d{1,2}\.",
+        text,
+    ):
+        candidates.append(text)
     for candidate in candidates:
         candidate = candidate.strip()
         for pattern in _DATE_PATTERNS:
