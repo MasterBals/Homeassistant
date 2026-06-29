@@ -17,7 +17,7 @@ from .services import async_setup_services, async_unload_services
 PLATFORMS = [Platform.SENSOR, Platform.CALENDAR]
 FRONTEND_PATH = Path(__file__).parent / "frontend"
 FRONTEND_URL = "/chur_abfall_static"
-CARD_URL = f"{FRONTEND_URL}/chur-abfall-card.js?v=1.0.4"
+CARD_URL = f"{FRONTEND_URL}/chur-abfall-card.js?v=1.0.5"
 DATA_FRONTEND_REGISTERED = "frontend_registered"
 
 
