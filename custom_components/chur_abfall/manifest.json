@@ -1,0 +1,1 @@
+{"domain":"chur_abfall","name":"Chur Abfall","codeowners":["@open-source"],"config_flow":true,"documentation":"https://github.com/custom-components/chur_abfall","iot_class":"cloud_polling","issue_tracker":"https://github.com/custom-components/chur_abfall/issues","requirements":[],"version":"1.0.0"}
