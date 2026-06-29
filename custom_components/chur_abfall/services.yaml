@@ -1,0 +1,14 @@
+refresh:
+  name: Aktualisieren
+  description: Lädt die Chur-Abfalltermine sofort neu.
+reload:
+  name: Neu laden
+  description: Lädt Chur Abfall neu.
+  fields:
+    entry_id:
+      selector:
+        text:
+      required: false
+export:
+  name: Export
+  description: Gibt alle geladenen Termine als Service-Antwort zurück.
