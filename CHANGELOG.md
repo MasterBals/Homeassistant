@@ -1,5 +1,10 @@
 # Changelog
 
+## 1.0.5
+
+- Refine Lovelace card bin artwork with transparent SVGs and waste-type symbols on each bin.
+- Animate only the waste items falling into the bin instead of moving the whole bin image.
+
 ## 1.0.4
 
 - Bundle and auto-register the Lovelace card from the integration so Home Assistant no longer depends on a manually copied `/config/www` card file.
