@@ -1,5 +1,10 @@
 # Changelog
 
+## 1.0.4
+
+- Bundle and auto-register the Lovelace card from the integration so Home Assistant no longer depends on a manually copied `/config/www` card file.
+- Serve the illustrated waste assets from the integration package.
+
 ## 1.0.3
 
 - Improve the Lovelace card with visual editor options for selecting waste types.
