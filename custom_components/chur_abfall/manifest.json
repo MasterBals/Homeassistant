@@ -1,0 +1,11 @@
+{
+  "domain": "chur_abfall",
+  "name": "Chur Abfall",
+  "codeowners": ["@MasterBals"],
+  "config_flow": true,
+  "documentation": "https://github.com/MasterBals/Homeassistant",
+  "iot_class": "cloud_polling",
+  "issue_tracker": "https://github.com/MasterBals/Homeassistant/issues",
+  "requirements": [],
+  "version": "1.0.2"
+}
