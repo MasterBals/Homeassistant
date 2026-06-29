@@ -18,7 +18,7 @@ Home Assistant Custom Integration für Abfalltermine der Stadt Chur. Die Integra
 
 ## Manuelle Installation
 
-Kopiere `custom_components/chur_abfall` nach `<config>/custom_components/chur_abfall` und `www/chur_abfall/chur-abfall-card.js` nach `<config>/www/chur_abfall/chur-abfall-card.js`.
+Kopiere `custom_components/chur_abfall` nach `<config>/custom_components/chur_abfall` und starte Home Assistant neu. Die Lovelace Card und ihre Bilder werden automatisch aus der Integration ausgeliefert.
 
 ## Konfiguration
 
@@ -26,22 +26,22 @@ Der Config Flow lädt die Strassenliste live von der offiziellen Churer Seite. W
 
 ## Dashboard
 
-Füge die Ressource hinzu:
-
-```yaml
-url: /local/chur_abfall/chur-abfall-card.js
-type: module
-```
+Die Lovelace Card wird von der Integration automatisch als Frontend-Modul registriert. Eine manuelle Ressource unter `/local/chur_abfall/chur-abfall-card.js` ist nicht nötig.
 
 Beispielkarte:
 
 ```yaml
 type: custom:chur-abfall-card
-entity: sensor.nachste_abfuhr
+entity: sensor.chur_abfall_nachste_abfuhr
 title: Chur Abfall
-show_timeline: true
-timeline_items: 5
+waste_types:
+  - Karton
+  - Papier
+  - Kompost
+  - Kehricht
 animate: true
+show_street: true
+compact: false
 ```
 
 ## Services
@@ -53,7 +53,7 @@ animate: true
 ## Troubleshooting
 
 - Wenn keine Strassen erscheinen, prüfe die Erreichbarkeit der offiziellen Churer Webseite aus Home Assistant.
-- Nach Änderungen an der Card Browser-Cache leeren oder die Ressource neu laden.
+- Nach Änderungen an der Card Browser-Cache leeren oder Home Assistant neu starten.
 - Logs für `custom_components.chur_abfall` aktivieren, um Parser- und Netzwerkhinweise zu sehen.
 
 ## Lizenz
