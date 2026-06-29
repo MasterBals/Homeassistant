@@ -63,4 +63,6 @@ class ChurWasteApi:
                 {"strassenabschnitt[strassenabschnittId]": street.id}
             )
             events.extend(parse_events(html, [street], today))
-        return sorted(events, key=lambda event: (event.date, event.waste_type, event.street))
+        return sorted(
+            events, key=lambda event: (event.date, event.waste_type, event.street)
+        )
