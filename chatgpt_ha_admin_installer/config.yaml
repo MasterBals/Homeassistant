@@ -1,0 +1,32 @@
+name: "ChatGPT Home Assistant Admin"
+version: "1.0.0"
+slug: "chatgpt_ha_admin_installer"
+description: >-
+  Installiert und aktualisiert die ChatGPT Home Assistant Admin MCP-Integration
+  und richtet den MCP-Endpunkt automatisch über Home Assistant ein.
+url: "https://github.com/MasterBals/Homeassistant"
+arch:
+  - amd64
+  - aarch64
+startup: once
+boot: auto
+init: false
+homeassistant: "2026.8.0"
+homeassistant_api: true
+map:
+  - type: homeassistant_config
+    read_only: false
+options:
+  auto_restart: true
+  write_enabled: true
+  allow_service_calls: true
+  allow_sensitive_files: false
+  require_hash_for_writes: true
+  max_read_bytes: 2000000
+schema:
+  auto_restart: bool
+  write_enabled: bool
+  allow_service_calls: bool
+  allow_sensitive_files: bool
+  require_hash_for_writes: bool
+  max_read_bytes: int
