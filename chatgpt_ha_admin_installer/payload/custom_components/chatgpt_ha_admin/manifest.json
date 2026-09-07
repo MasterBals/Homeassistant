@@ -1,11 +1,10 @@
 {
   "domain": "chatgpt_ha_admin",
   "name": "ChatGPT Home Assistant Admin",
-  "version": "1.0.0",
+  "version": "1.0.2",
   "documentation": "https://github.com/MasterBals/Homeassistant",
   "issue_tracker": "https://github.com/MasterBals/Homeassistant/issues",
   "codeowners": ["@MasterBals"],
-  "dependencies": ["llm", "mcp_server", "lovelace"],
   "integration_type": "service",
   "iot_class": "local_push"
 }
