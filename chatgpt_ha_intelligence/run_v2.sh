@@ -1,7 +1,11 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-: "${SUPERVISOR_TOKEN:?SUPERVISOR_TOKEN is required; app must run with Home Assistant API access}"
+SUPERVISOR_TOKEN="${SUPERVISOR_TOKEN:-}"
+if [[ -z "${SUPERVISOR_TOKEN}" ]]; then
+  echo "ERROR: SUPERVISOR_TOKEN is unavailable. The app must run with Home Assistant/Supervisor API access." >&2
+  exit 1
+fi
 
 SRC="/opt/homeassistant-source/chatgpt_ha_admin_installer/payload/custom_components/chatgpt_ha_admin"
 DST="/homeassistant/custom_components/chatgpt_ha_admin"
@@ -12,6 +16,7 @@ STAMP="$(date +%Y%m%d_%H%M%S)"
 OPTIONS="/data/options.json"
 OPTIONS_BACKUP="/tmp/chatgpt_ha_options.original.json"
 INTERNAL_TOKEN_FILE="/data/internal_mcp_token"
+RUNTIME_STATE="/data/admin_runtime_state.json"
 BRIDGE_PORT=18765
 UNIFIED_PORT=8765
 
@@ -55,6 +60,48 @@ wait_http() {
   return 1
 }
 
+wait_ha_core() {
+  local tries="${1:-90}"
+  local i
+  for ((i=1; i<=tries; i++)); do
+    if curl -fsS --max-time 3 \
+      -H "Authorization: Bearer ${SUPERVISOR_TOKEN}" \
+      http://supervisor/core/api/ >/dev/null 2>&1; then
+      echo "Home Assistant Core API is ready."
+      return 0
+    fi
+    sleep 2
+  done
+  echo "ERROR: Home Assistant Core API did not become ready." >&2
+  return 1
+}
+
+probe_admin_mcp() {
+  local response
+  response="$(curl -fsS --max-time 10 \
+    -H "Authorization: Bearer ${SUPERVISOR_TOKEN}" \
+    -H "Content-Type: application/json" \
+    -H "Accept: application/json" \
+    -X POST \
+    --data '{"jsonrpc":"2.0","id":"probe","method":"initialize","params":{"protocolVersion":"2026-07-28","capabilities":{},"clientInfo":{"name":"chatgpt-ha-addon-probe","version":"2.1.4"}}}' \
+    http://supervisor/core/api/mcp/chatgpt_ha_admin 2>/dev/null || true)"
+  [[ -n "${response}" ]] && [[ "$(printf '%s' "${response}" | jq -r '.result.protocolVersion // empty' 2>/dev/null || true)" != "" ]]
+}
+
+wait_admin_mcp() {
+  local tries="${1:-60}"
+  local i
+  for ((i=1; i<=tries; i++)); do
+    if probe_admin_mcp; then
+      echo "Home Assistant Admin MCP is ready."
+      return 0
+    fi
+    sleep 2
+  done
+  echo "WARNING: Home Assistant Admin MCP did not become ready; Intelligence tools will still start and UnifiedStatus will expose the error." >&2
+  return 1
+}
+
 mkdir -p "${STATE_DIR}" "${BACKUP_DIR}" /homeassistant/custom_components
 
 WRITE_ENABLED="$(opt write_enabled true)"
@@ -67,7 +114,8 @@ LOG_LEVEL="$(opt log_level INFO)"
 TUNNEL_ID="$(opt tunnel_id '')"
 RUNTIME_API_KEY="$(opt runtime_api_key '')"
 
-cat > "${STATE_DIR}/settings.json.new" <<JSON
+SETTINGS_TMP="${STATE_DIR}/settings.json.new"
+cat > "${SETTINGS_TMP}" <<JSON
 {
   "write_enabled": ${WRITE_ENABLED},
   "allow_service_calls": ${ALLOW_SERVICE_CALLS},
@@ -77,23 +125,34 @@ cat > "${STATE_DIR}/settings.json.new" <<JSON
 }
 JSON
 
+SETTINGS_SHA="$(sha256sum "${SETTINGS_TMP}" | awk '{print $1}')"
+COMPONENT_SHA="$(find "${SRC}" -type f -print | LC_ALL=C sort | while IFS= read -r file; do sha256sum "${file}"; done | sha256sum | awk '{print $1}')"
+LOADED_SETTINGS_SHA="$(jq -r '.settings_sha // ""' "${RUNTIME_STATE}" 2>/dev/null || true)"
+LOADED_COMPONENT_SHA="$(jq -r '.component_sha // ""' "${RUNTIME_STATE}" 2>/dev/null || true)"
+
 if [[ -f "${STATE_DIR}/settings.json" ]]; then
-  cp -a "${STATE_DIR}/settings.json" "${BACKUP_DIR}/settings_${STAMP}.json"
+  if ! cmp -s "${STATE_DIR}/settings.json" "${SETTINGS_TMP}"; then
+    cp -a "${STATE_DIR}/settings.json" "${BACKUP_DIR}/settings_${STAMP}.json"
+  fi
 fi
-mv "${STATE_DIR}/settings.json.new" "${STATE_DIR}/settings.json"
+mv "${SETTINGS_TMP}" "${STATE_DIR}/settings.json"
 
 if [[ ! -f "${CFG}" ]]; then
   echo "ERROR: configuration.yaml not found at ${CFG}" >&2
   exit 1
 fi
 
-if [[ -d "${DST}" ]]; then
-  cp -a "${DST}" "${BACKUP_DIR}/chatgpt_ha_admin_${STAMP}"
+COMPONENT_CHANGED=0
+if [[ ! -d "${DST}" ]] || ! diff -qr "${SRC}" "${DST}" >/dev/null 2>&1; then
+  COMPONENT_CHANGED=1
+  if [[ -d "${DST}" ]]; then
+    cp -a "${DST}" "${BACKUP_DIR}/chatgpt_ha_admin_${STAMP}"
+  fi
+  rm -rf "${DST}.new"
+  cp -a "${SRC}" "${DST}.new"
+  rm -rf "${DST}"
+  mv "${DST}.new" "${DST}"
 fi
-rm -rf "${DST}.new"
-cp -a "${SRC}" "${DST}.new"
-rm -rf "${DST}"
-mv "${DST}.new" "${DST}"
 
 CFG_CHANGED=0
 if ! grep -Eq '^[[:space:]]*chatgpt_ha_admin[[:space:]]*:' "${CFG}"; then
@@ -118,7 +177,7 @@ if [[ "${RESULT}" != "valid" ]]; then
   if [[ "${CFG_CHANGED}" == "1" && -f "${BACKUP_DIR}/configuration_${STAMP}.yaml" ]]; then
     cp -a "${BACKUP_DIR}/configuration_${STAMP}.yaml" "${CFG}"
   fi
-  if [[ -d "${BACKUP_DIR}/chatgpt_ha_admin_${STAMP}" ]]; then
+  if [[ "${COMPONENT_CHANGED}" == "1" && -d "${BACKUP_DIR}/chatgpt_ha_admin_${STAMP}" ]]; then
     rm -rf "${DST}"
     cp -a "${BACKUP_DIR}/chatgpt_ha_admin_${STAMP}" "${DST}"
   fi
@@ -127,14 +186,34 @@ fi
 
 echo "ChatGPT Home Assistant Admin integration installed and config validated."
 
+RESTART_REQUIRED=0
+if [[ "${COMPONENT_CHANGED}" == "1" || "${CFG_CHANGED}" == "1" ]]; then
+  RESTART_REQUIRED=1
+fi
+if [[ "${LOADED_COMPONENT_SHA}" != "${COMPONENT_SHA}" || "${LOADED_SETTINGS_SHA}" != "${SETTINGS_SHA}" ]]; then
+  RESTART_REQUIRED=1
+fi
 if [[ "${AUTO_RESTART}" == "true" ]]; then
-  echo "Restarting Home Assistant because auto_restart is enabled..."
-  curl -fsS --max-time 15 \
+  RESTART_REQUIRED=1
+fi
+
+if [[ "${RESTART_REQUIRED}" == "1" ]]; then
+  echo "Restarting Home Assistant Core once to load the current Admin MCP integration/settings..."
+  curl -fsS --max-time 5 \
     -H "Authorization: Bearer ${SUPERVISOR_TOKEN}" \
     -H "Content-Type: application/json" \
     -X POST -d '{}' \
-    http://supervisor/core/api/services/homeassistant/restart >/dev/null || true
+    http://supervisor/core/api/services/homeassistant/restart >/dev/null 2>&1 || true
+  wait_ha_core 120
+  sleep 3
+  jq -n \
+    --arg component_sha "${COMPONENT_SHA}" \
+    --arg settings_sha "${SETTINGS_SHA}" \
+    --arg updated_at "$(date -Iseconds)" \
+    '{component_sha:$component_sha,settings_sha:$settings_sha,updated_at:$updated_at}' > "${RUNTIME_STATE}"
 fi
+
+wait_admin_mcp 60 || true
 
 umask 077
 if [[ ! -s "${INTERNAL_TOKEN_FILE}" ]]; then
