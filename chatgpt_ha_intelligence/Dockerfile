@@ -1,4 +1,4 @@
-FROM ghcr.io/openai/tunnel-client:v0.0.14 AS openai_tunnel
+FROM ghcr.io/openai/tunnel-client:v0.0.14@sha256:41d7c85dab37797a3eaa17c41b94a7206dd0bc186fd361034c9ec3863596ff6c AS openai_tunnel
 
 FROM ghcr.io/home-assistant/base-python:3.14-alpine3.24-2026.06.1
 
