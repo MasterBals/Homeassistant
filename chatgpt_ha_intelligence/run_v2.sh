@@ -83,7 +83,7 @@ probe_admin_mcp() {
     -H "Content-Type: application/json" \
     -H "Accept: application/json" \
     -X POST \
-    --data '{"jsonrpc":"2.0","id":"probe","method":"initialize","params":{"protocolVersion":"2026-07-28","capabilities":{},"clientInfo":{"name":"chatgpt-ha-addon-probe","version":"2.1.4"}}}' \
+    --data '{"jsonrpc":"2.0","id":"probe","method":"initialize","params":{"protocolVersion":"2026-07-28","capabilities":{},"clientInfo":{"name":"chatgpt-ha-addon-probe","version":"2.1.5"}}}' \
     http://supervisor/core/api/mcp/chatgpt_ha_admin 2>/dev/null || true)"
   [[ -n "${response}" ]] && [[ "$(printf '%s' "${response}" | jq -r '.result.protocolVersion // empty' 2>/dev/null || true)" != "" ]]
 }
@@ -209,7 +209,7 @@ if [[ "${RESTART_REQUIRED}" == "1" ]]; then
   jq -n \
     --arg component_sha "${COMPONENT_SHA}" \
     --arg settings_sha "${SETTINGS_SHA}" \
-    --arg updated_at "$(date -Iseconds)" \
+    --arg updated_at "$(date +%Y-%m-%dT%H:%M:%S%z)" \
     '{component_sha:$component_sha,settings_sha:$settings_sha,updated_at:$updated_at}' > "${RUNTIME_STATE}"
 fi
 
