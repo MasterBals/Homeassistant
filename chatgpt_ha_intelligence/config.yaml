@@ -1,9 +1,10 @@
 name: "ChatGPT Home Assistant Admin + Intelligence"
-version: "2.0.5"
+version: "2.1.0"
 slug: "chatgpt_ha_intelligence"
 description: >-
-  Einheitliche ChatGPT-MCP-App für Home-Assistant-Administration, Inventarisierung
-  und lokale LAN/VLAN-Netzwerkerkennung.
+  Einheitliche ChatGPT-MCP-App für Home-Assistant-Administration,
+  Inventarisierung, lokale LAN/VLAN-Netzwerkerkennung und den offiziellen
+  OpenAI Secure MCP Tunnel.
 url: "https://github.com/MasterBals/Homeassistant"
 arch:
   - amd64
@@ -19,14 +20,9 @@ host_network: true
 privileged:
   - NET_RAW
 apparmor: false
-ports:
-  8765/tcp: 8765
-ports_description:
-  8765/tcp: "Intelligence MCP and health endpoint"
 map:
   - type: homeassistant_config
     read_only: false
-webui: "http://[HOST]:[PORT:8765]/health"
 options:
   auto_restart: false
   write_enabled: true
@@ -34,12 +30,11 @@ options:
   allow_sensitive_files: false
   require_hash_for_writes: true
   max_read_bytes: 2000000
-  mcp_token: null
-  bind_host: "0.0.0.0"
-  port: 8765
   allowed_cidrs: []
   max_scan_hosts: 1024
   scan_timeout_seconds: 900
+  tunnel_id: ""
+  runtime_api_key: ""
   log_level: "INFO"
 schema:
   auto_restart: bool
@@ -48,11 +43,10 @@ schema:
   allow_sensitive_files: bool
   require_hash_for_writes: bool
   max_read_bytes: int
-  mcp_token: password
-  bind_host: str
-  port: port
   allowed_cidrs:
     - str
   max_scan_hosts: "int(1,4096)"
   scan_timeout_seconds: "int(30,3600)"
+  tunnel_id: str
+  runtime_api_key: password
   log_level: "list(DEBUG|INFO|WARNING|ERROR)"
