@@ -31,7 +31,8 @@ RUN pip3 install --no-cache-dir \
     "uvicorn>=0.35,<1"
 
 COPY run.sh /run.sh
-RUN chmod a+x /run.sh
+COPY entrypoint.sh /entrypoint.sh
+RUN chmod a+x /run.sh /entrypoint.sh
 
 LABEL \
   io.hass.name="ChatGPT Home Assistant Admin + Intelligence" \
@@ -40,4 +41,4 @@ LABEL \
   io.hass.type="app" \
   io.hass.arch="${BUILD_ARCH}"
 
-CMD ["/run.sh"]
+CMD ["/entrypoint.sh"]
