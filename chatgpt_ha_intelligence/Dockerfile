@@ -1,3 +1,5 @@
+FROM ghcr.io/openai/tunnel-client:v0.0.14 AS openai_tunnel
+
 FROM ghcr.io/home-assistant/base-python:3.14-alpine3.24-2026.06.1
 
 ARG BUILD_VERSION
@@ -30,13 +32,19 @@ RUN pip3 install --no-cache-dir \
     "PyYAML>=6.0.2,<7" \
     "uvicorn>=0.35,<1"
 
-COPY run.sh /run.sh
+WORKDIR /app
+
+COPY --from=openai_tunnel /usr/bin/tunnel-client-runtime /usr/local/bin/tunnel-client-runtime
+COPY unified_mcp.py /app/unified_mcp.py
+COPY OPENAI_TUNNEL_CLIENT_LICENSE.txt /licenses/openai-tunnel-client-LICENSE
+COPY OPENAI_TUNNEL_CLIENT_NOTICE.txt /licenses/openai-tunnel-client-NOTICE
+COPY run_v2.sh /run.sh
 COPY entrypoint.sh /entrypoint.sh
-RUN chmod a+x /run.sh /entrypoint.sh
+RUN chmod a+x /run.sh /entrypoint.sh /usr/local/bin/tunnel-client-runtime
 
 LABEL \
   io.hass.name="ChatGPT Home Assistant Admin + Intelligence" \
-  io.hass.description="Unified MCP administration, inventory and private LAN/VLAN discovery for Home Assistant" \
+  io.hass.description="Unified Home Assistant MCP administration, intelligence, network discovery and OpenAI Secure MCP Tunnel" \
   io.hass.version="${BUILD_VERSION}" \
   io.hass.type="app" \
   io.hass.arch="${BUILD_ARCH}"
