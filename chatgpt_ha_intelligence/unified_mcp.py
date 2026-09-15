@@ -17,7 +17,7 @@ from starlette.requests import Request
 from starlette.responses import JSONResponse
 from starlette.routing import Route
 
-VERSION = "2.1.4"
+VERSION = "2.1.5"
 HOST = os.environ.get("UNIFIED_MCP_HOST", "127.0.0.1")
 PORT = int(os.environ.get("UNIFIED_MCP_PORT", "8765"))
 INTELLIGENCE_URL = os.environ.get("INTELLIGENCE_MCP_URL", "http://127.0.0.1:18765/mcp")
@@ -188,8 +188,9 @@ server = Server(
 
 
 async def health(_request: Request) -> JSONResponse:
-    await refresh_tools()
-    return JSONResponse(status_payload())
+    payload = status_payload()
+    payload["process_status"] = "ready"
+    return JSONResponse(payload)
 
 
 security = TransportSecuritySettings(
