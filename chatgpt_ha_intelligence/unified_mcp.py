@@ -16,7 +16,7 @@ from starlette.requests import Request
 from starlette.responses import JSONResponse
 from starlette.routing import Route
 
-VERSION = "2.1.0"
+VERSION = "2.1.1"
 HOST = os.environ.get("UNIFIED_MCP_HOST", "127.0.0.1")
 PORT = int(os.environ.get("UNIFIED_MCP_PORT", "8765"))
 INTELLIGENCE_URL = os.environ.get("INTELLIGENCE_MCP_URL", "http://127.0.0.1:18765/mcp")
