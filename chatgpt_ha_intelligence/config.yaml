@@ -1,5 +1,5 @@
 name: "ChatGPT Home Assistant Admin + Intelligence"
-version: "2.0.1"
+version: "2.0.2"
 slug: "chatgpt_ha_intelligence"
 description: >-
   Einheitliche ChatGPT-MCP-App für Home-Assistant-Administration, Inventarisierung
@@ -22,7 +22,7 @@ apparmor: false
 map:
   - type: homeassistant_config
     read_only: false
-webui: "http://[HOST]:8765/health"
+webui: "http://[HOST]:[PORT:8765]/health"
 options:
   auto_restart: true
   write_enabled: true
