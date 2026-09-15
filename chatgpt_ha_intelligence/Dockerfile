@@ -22,8 +22,8 @@ RUN apk add --no-cache \
     arp-scan
 
 RUN git clone --depth 1 https://github.com/MasterBals/Homeassistant.git /opt/homeassistant-source \
-    && git -C /opt/homeassistant-source fetch --depth 1 origin 3c8dcf6de6b22715603d27be7c8efeae6b5d9867 \
-    && git -C /opt/homeassistant-source checkout 3c8dcf6de6b22715603d27be7c8efeae6b5d9867
+    && git -C /opt/homeassistant-source fetch --depth 1 origin 87f0bdd3d3bb6be6b9cafb3208b64cbbf78705ee \
+    && git -C /opt/homeassistant-source checkout 87f0bdd3d3bb6be6b9cafb3208b64cbbf78705ee
 
 RUN pip3 install --no-cache-dir \
     "mcp==2.1.1" \
