@@ -1,0 +1,49 @@
+name: "HA Intelligence Bridge"
+version: "0.1.0"
+slug: "ha_intelligence_bridge"
+description: >-
+  MCP bridge for deep Home Assistant inventory, safe configuration access,
+  service execution and local network discovery/scanning.
+arch:
+  - amd64
+  - aarch64
+startup: services
+boot: auto
+homeassistant_api: true
+hassio_api: true
+hassio_role: homeassistant
+host_network: true
+privileged:
+  - NET_RAW
+apparmor: false
+map:
+  - type: homeassistant_config
+    read_only: false
+    path: /homeassistant
+webui: "http://[HOST]:8765/health"
+options:
+  mcp_token: "CHANGE_ME_BEFORE_STARTING"
+  bind_host: "0.0.0.0"
+  port: 8765
+  allow_actions: false
+  allow_writes: false
+  allowed_cidrs: []
+  max_scan_hosts: 1024
+  max_parallel: 64
+  scan_timeout_seconds: 900
+  allowed_origins: []
+  log_level: "INFO"
+schema:
+  mcp_token: password
+  bind_host: str
+  port: port
+  allow_actions: bool
+  allow_writes: bool
+  allowed_cidrs:
+    - str
+  max_scan_hosts: int(1,4096)
+  max_parallel: int(1,256)
+  scan_timeout_seconds: int(30,3600)
+  allowed_origins:
+    - str
+  log_level: list(DEBUG|INFO|WARNING|ERROR)
