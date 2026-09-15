@@ -62,11 +62,12 @@ async def refresh_tools() -> list[types.Tool]:
 
     for source, tools in (("admin", admin_tools), ("intelligence", intelligence_tools)):
         for tool in tools:
-            public_name = tool.name
+            upstream_name = tool.name
+            public_name = upstream_name
             if public_name in routes:
-                public_name = f"{source}_{public_name}"
+                public_name = f"{source}_{upstream_name}"
                 tool = tool.model_copy(update={"name": public_name})
-            routes[public_name] = (source, tool.name if public_name == tool.name else public_name.removeprefix(f"{source}_"))
+            routes[public_name] = (source, upstream_name)
             merged.append(tool)
 
     TOOL_ROUTES.clear()
@@ -91,7 +92,7 @@ async def on_call_tool(
     if route is None:
         return types.CallToolResult(
             content=[types.TextContent(type="text", text=f"Unknown tool: {params.name}")],
-            isError=True,
+            is_error=True,
         )
 
     source, upstream_name = route
@@ -107,7 +108,7 @@ async def on_call_tool(
         logger.exception("Tool forwarding failed: %s", params.name)
         return types.CallToolResult(
             content=[types.TextContent(type="text", text=f"{source} MCP error: {exc}")],
-            isError=True,
+            is_error=True,
         )
 
 
