@@ -1,0 +1,5 @@
+mcp==2.1.1
+httpx>=0.28,<1
+websockets>=15,<16
+PyYAML>=6.0.2,<7
+uvicorn>=0.35,<1
