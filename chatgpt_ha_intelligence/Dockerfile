@@ -7,6 +7,7 @@ ARG BUILD_ARCH
 
 RUN apk add --no-cache \
     bash \
+    ca-certificates \
     curl \
     jq \
     rsync \
@@ -34,13 +35,16 @@ RUN pip3 install --no-cache-dir \
 
 WORKDIR /app
 
-COPY --from=openai_tunnel /usr/bin/tunnel-client-runtime /usr/local/bin/tunnel-client-runtime
+# The official OpenAI v0.0.14 image ships these two runtime binaries.
+COPY --from=openai_tunnel /usr/bin/tunnel-client /usr/bin/tunnel-client
+COPY --from=openai_tunnel /usr/bin/cloudflared /usr/bin/cloudflared
+
 COPY unified_mcp.py /app/unified_mcp.py
 COPY OPENAI_TUNNEL_CLIENT_LICENSE.txt /licenses/openai-tunnel-client-LICENSE
 COPY OPENAI_TUNNEL_CLIENT_NOTICE.txt /licenses/openai-tunnel-client-NOTICE
 COPY run_v2.sh /run.sh
 COPY entrypoint.sh /entrypoint.sh
-RUN chmod a+x /run.sh /entrypoint.sh /usr/local/bin/tunnel-client-runtime
+RUN chmod a+x /run.sh /entrypoint.sh /usr/bin/tunnel-client /usr/bin/cloudflared
 
 LABEL \
   io.hass.name="ChatGPT Home Assistant Admin + Intelligence" \
