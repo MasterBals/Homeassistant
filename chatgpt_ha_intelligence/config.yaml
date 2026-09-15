@@ -1,0 +1,52 @@
+name: "ChatGPT Home Assistant Admin + Intelligence"
+version: "2.0.0"
+slug: "chatgpt_ha_intelligence"
+description: >-
+  Einheitliche ChatGPT-MCP-App für Home-Assistant-Administration, Inventarisierung
+  und lokale LAN/VLAN-Netzwerkerkennung.
+url: "https://github.com/MasterBals/Homeassistant"
+arch:
+  - amd64
+  - aarch64
+startup: application
+boot: auto
+init: false
+homeassistant_api: true
+hassio_api: true
+hassio_role: homeassistant
+host_network: true
+privileged:
+  - NET_RAW
+apparmor: false
+map:
+  - type: homeassistant_config
+    read_only: false
+options:
+  auto_restart: true
+  write_enabled: true
+  allow_service_calls: true
+  allow_sensitive_files: false
+  require_hash_for_writes: true
+  max_read_bytes: 2000000
+  mcp_token: "CHANGE_ME_BEFORE_STARTING"
+  bind_host: "0.0.0.0"
+  port: 8765
+  allowed_cidrs: []
+  max_scan_hosts: 1024
+  scan_timeout_seconds: 900
+  log_level: "INFO"
+schema:
+  auto_restart: bool
+  write_enabled: bool
+  allow_service_calls: bool
+  allow_sensitive_files: bool
+  require_hash_for_writes: bool
+  max_read_bytes: int
+  mcp_token: password
+  bind_host: str
+  port: port
+  allowed_cidrs:
+    - str
+  max_scan_hosts: "int(1,4096)"
+  scan_timeout_seconds: "int(30,3600)"
+  log_level: "list(DEBUG|INFO|WARNING|ERROR)"
