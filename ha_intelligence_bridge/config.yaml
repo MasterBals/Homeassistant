@@ -1,5 +1,5 @@
 name: "HA Intelligence Bridge"
-version: "0.1.0"
+version: "0.1.1"
 slug: "ha_intelligence_bridge"
 description: >-
   MCP bridge for deep Home Assistant inventory, safe configuration access,
@@ -20,7 +20,7 @@ map:
   - type: homeassistant_config
     read_only: false
     path: /homeassistant
-webui: "http://[HOST]:8765/health"
+webui: "http://[HOST]:[PORT:8765]/health"
 options:
   mcp_token: "CHANGE_ME_BEFORE_STARTING"
   bind_host: "0.0.0.0"
@@ -41,9 +41,9 @@ schema:
   allow_writes: bool
   allowed_cidrs:
     - str
-  max_scan_hosts: int(1,4096)
-  max_parallel: int(1,256)
-  scan_timeout_seconds: int(30,3600)
+  max_scan_hosts: "int(1,4096)"
+  max_parallel: "int(1,256)"
+  scan_timeout_seconds: "int(30,3600)"
   allowed_origins:
     - str
-  log_level: list(DEBUG|INFO|WARNING|ERROR)
+  log_level: "list(DEBUG|INFO|WARNING|ERROR)"
