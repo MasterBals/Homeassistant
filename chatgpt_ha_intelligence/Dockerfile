@@ -44,7 +44,8 @@ COPY OPENAI_TUNNEL_CLIENT_LICENSE.txt /licenses/openai-tunnel-client-LICENSE
 COPY OPENAI_TUNNEL_CLIENT_NOTICE.txt /licenses/openai-tunnel-client-NOTICE
 COPY run_v2.sh /run.sh
 COPY entrypoint.sh /entrypoint.sh
-RUN chmod a+x /run.sh /entrypoint.sh /usr/bin/tunnel-client /usr/bin/cloudflared
+RUN chmod a+x /run.sh /entrypoint.sh /usr/bin/tunnel-client /usr/bin/cloudflared \
+    && ln -sf /usr/bin/tunnel-client /usr/local/bin/tunnel-client-runtime
 
 LABEL \
   io.hass.name="ChatGPT Home Assistant Admin + Intelligence" \
