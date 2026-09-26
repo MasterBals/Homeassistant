@@ -22,9 +22,7 @@ RUN apk add --no-cache \
     netcat-openbsd \
     arp-scan
 
-RUN git clone --depth 1 https://github.com/MasterBals/Homeassistant.git /opt/homeassistant-source \
-    && git -C /opt/homeassistant-source fetch --depth 1 origin 87f0bdd3d3bb6be6b9cafb3208b64cbbf78705ee \
-    && git -C /opt/homeassistant-source checkout 87f0bdd3d3bb6be6b9cafb3208b64cbbf78705ee
+RUN git clone --depth 1 --branch main https://github.com/MasterBals/Homeassistant.git /opt/homeassistant-source
 
 RUN pip3 install --no-cache-dir \
     "mcp==2.1.1" \
