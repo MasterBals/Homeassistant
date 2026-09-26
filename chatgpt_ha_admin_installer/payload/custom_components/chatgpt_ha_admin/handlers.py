@@ -49,6 +49,26 @@ class AdminHandlers:
         if which in {'all','devices'}: out['devices']=f(dr.async_get(self.hass).devices.values())
         if which in {'all','entities'}: out['entities']=f(er.async_get(self.hass).entities.values())
         return out
+    async def list_config_flows(self,a,c):
+        domain=a.get('domain')
+        flows=self.hass.config_entries.flow.async_progress()
+        if domain: flows=[f for f in flows if f.get('handler')==domain]
+        return {'count':len(flows),'flows':flows}
+    async def start_config_flow(self,a,c):
+        domain=a['domain']; source=a.get('source','user'); context={'source':source}
+        entry_id=a.get('entry_id')
+        if entry_id: context['entry_id']=entry_id
+        data=a.get('data')
+        result=await self.hass.config_entries.flow.async_init(domain,context=context,data=data)
+        return result
+    async def configure_config_flow(self,a,c):
+        flow_id=a['flow_id']
+        result=await self.hass.config_entries.flow.async_configure(flow_id,user_input=a.get('user_input'))
+        return result
+    async def abort_config_flow(self,a,c):
+        flow_id=a['flow_id']
+        result=await self.hass.config_entries.flow.async_abort(flow_id)
+        return {'ok':True,'flow_id':flow_id,'result':result}
     async def list_services(self,a,c):
         desc=await svc.async_get_all_descriptions(self.hass); d=a.get('domain')
         return {k:v for k,v in desc.items() if not d or k==d}
