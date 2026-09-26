@@ -22,7 +22,8 @@ RUN apk add --no-cache \
     netcat-openbsd \
     arp-scan
 
-RUN git clone --depth 1 --branch main https://github.com/MasterBals/Homeassistant.git /opt/homeassistant-source
+RUN echo "Bundling Homeassistant source for ${BUILD_VERSION}" \
+    && git clone --depth 1 --branch main https://github.com/MasterBals/Homeassistant.git /opt/homeassistant-source
 
 RUN pip3 install --no-cache-dir \
     "mcp==2.1.1" \
