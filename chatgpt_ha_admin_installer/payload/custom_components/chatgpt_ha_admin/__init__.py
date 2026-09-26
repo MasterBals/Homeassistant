@@ -50,14 +50,16 @@ async def _discover_hue_bridge(
     )
 
     bridge = None
-    configured_host = entry.data.get(CONF_HOST)
+    configured_host = str(entry.data.get(CONF_HOST) or "")
+    direct_error = None
     if configured_host:
         try:
             bridge = await discover_bridge(
-                str(configured_host),
+                configured_host,
                 websession=websession,
             )
-        except Exception:
+        except Exception as err:
+            direct_error = f"{type(err).__name__}: {err}"
             bridge = None
 
     try:
@@ -88,7 +90,9 @@ async def _discover_hue_bridge(
             for candidate in bridges
         ]
         raise HomeAssistantError(
-            f"Configured Hue bridge was not found. Visible bridges: {visible}"
+            "Configured Hue bridge was not found. "
+            f"configured_host={configured_host!r}, "
+            f"direct_error={direct_error!r}, visible_bridges={visible}"
         )
     return entry, bridge
 
@@ -134,10 +138,51 @@ async def async_setup(hass: HomeAssistant, config: ConfigType) -> bool:
             {"operation": "flow_abort", "flow_id": flow_id, "result": result},
         )
 
+    async def _config_entry_info(call: ServiceCall) -> None:
+        entry_id = str(call.data["entry_id"])
+        entry = hass.config_entries.async_get_entry(entry_id)
+        if entry is None:
+            raise HomeAssistantError(f"Config entry not found: {entry_id}")
+        safe_data = {
+            key: value
+            for key, value in entry.data.items()
+            if key not in {CONF_API_KEY, "token", "password", "username"}
+        }
+        _write_runtime(
+            hass,
+            {
+                "operation": "config_entry_info",
+                "entry_id": entry.entry_id,
+                "domain": entry.domain,
+                "title": entry.title,
+                "unique_id": entry.unique_id,
+                "state": str(entry.state),
+                "data": safe_data,
+                "options": dict(entry.options),
+            },
+        )
+
     async def _hue_repair_prepare(call: ServiceCall) -> None:
         entry_id = str(call.data["entry_id"])
         try:
-            entry, bridge = await _discover_hue_bridge(hass, entry_id)
+            entry = hass.config_entries.async_get_entry(entry_id)
+            if entry is None or entry.domain != "hue":
+                raise HomeAssistantError(f"Invalid Hue config entry: {entry_id}")
+            host_override = str(call.data.get("host") or "")
+            if host_override:
+                bridge = await discover_bridge(
+                    host_override,
+                    websession=aiohttp_client.async_get_clientsession(
+                        hass,
+                        verify_ssl=False,
+                    ),
+                )
+                if bridge is None:
+                    raise HomeAssistantError(
+                        f"No Hue bridge found at host {host_override}"
+                    )
+            else:
+                entry, bridge = await _discover_hue_bridge(hass, entry_id)
             _write_runtime(
                 hass,
                 {
@@ -223,6 +268,7 @@ async def async_setup(hass: HomeAssistant, config: ConfigType) -> bool:
     hass.services.async_register(DOMAIN, "flow_start", _flow_start)
     hass.services.async_register(DOMAIN, "flow_configure", _flow_configure)
     hass.services.async_register(DOMAIN, "flow_abort", _flow_abort)
+    hass.services.async_register(DOMAIN, "config_entry_info", _config_entry_info)
     hass.services.async_register(DOMAIN, "hue_repair_prepare", _hue_repair_prepare)
     hass.services.async_register(DOMAIN, "hue_repair_link", _hue_repair_link)
 
@@ -242,6 +288,7 @@ async def async_setup(hass: HomeAssistant, config: ConfigType) -> bool:
             "flow_start",
             "flow_configure",
             "flow_abort",
+            "config_entry_info",
             "hue_repair_prepare",
             "hue_repair_link",
         ):
