@@ -7,7 +7,7 @@ from pathlib import Path
 from typing import Any
 
 from aiohue import LinkButtonNotPressed, create_app_key
-from aiohue.discovery import DiscoveredHueBridge, discover_nupnp
+from aiohue.discovery import DiscoveredHueBridge, discover_bridge, discover_nupnp
 from aiohue.util import normalize_bridge_id
 
 from homeassistant.components import persistent_notification
@@ -44,19 +44,33 @@ async def _discover_hue_bridge(
     if entry.domain != "hue":
         raise HomeAssistantError(f"Config entry {entry_id} is not a Hue entry")
 
-    try:
-        bridges = await discover_nupnp(
-            websession=aiohttp_client.async_get_clientsession(
-                hass,
-                verify_ssl=False,
+    websession = aiohttp_client.async_get_clientsession(
+        hass,
+        verify_ssl=False,
+    )
+
+    bridge = None
+    configured_host = entry.data.get(CONF_HOST)
+    if configured_host:
+        try:
+            bridge = await discover_bridge(
+                str(configured_host),
+                websession=websession,
             )
-        )
-    except Exception as err:
-        raise HomeAssistantError(f"Hue discovery failed: {err}") from err
+        except Exception:
+            bridge = None
+
+    try:
+        bridges = await discover_nupnp(websession=websession)
+    except Exception:
+        bridges = []
 
     expected_id = normalize_bridge_id(entry.unique_id) if entry.unique_id else None
-    bridge = None
-    if expected_id is not None:
+    if bridge is not None and expected_id is not None:
+        if normalize_bridge_id(bridge.id) != expected_id:
+            bridge = None
+
+    if bridge is None and expected_id is not None:
         bridge = next(
             (
                 candidate
