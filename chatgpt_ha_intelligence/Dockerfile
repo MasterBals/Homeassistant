@@ -20,7 +20,8 @@ RUN apk add --no-cache \
     bind-tools \
     avahi-tools \
     netcat-openbsd \
-    arp-scan
+    arp-scan \
+    ffmpeg
 
 RUN echo "Bundling Homeassistant source for ${BUILD_VERSION}" \
     && git clone --depth 1 --branch main https://github.com/MasterBals/Homeassistant.git /opt/homeassistant-source
@@ -39,6 +40,7 @@ COPY --from=openai_tunnel /usr/bin/tunnel-client /usr/bin/tunnel-client
 COPY --from=openai_tunnel /usr/bin/cloudflared /usr/bin/cloudflared
 
 COPY unified_mcp.py /app/unified_mcp.py
+COPY arlo_voice_listener.py /app/arlo_voice_listener.py
 COPY OPENAI_TUNNEL_CLIENT_LICENSE.txt /licenses/openai-tunnel-client-LICENSE
 COPY OPENAI_TUNNEL_CLIENT_NOTICE.txt /licenses/openai-tunnel-client-NOTICE
 COPY run_v2.sh /run.sh
