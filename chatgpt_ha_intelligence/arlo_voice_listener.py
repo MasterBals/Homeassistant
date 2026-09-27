@@ -41,6 +41,7 @@ CAMERAS = {
 WAKE_WORDS = {
     "jarvis", "jarwis", "jervis", "jarves", "javis", "charvis",
     "djarvis", "jarvi", "jarvice", "jarwisch", "jarwitz",
+    "service", "servis", "schervis", "dschervis", "tscharvis",
 }
 
 @dataclass
@@ -180,11 +181,22 @@ class ArloVoiceListener:
         _LOGGER.info(value)
         await self.set_helper("input_text.assist_arlo_status", value)
 
+    async def camera_status(self, cfg: dict[str, str], value: str) -> None:
+        mapping = {
+            "arlo_schlafzimmer": "input_text.assist_arlo_status_schlafzimmer",
+            "arlo_rileys_zimmer": "input_text.assist_arlo_status_riley",
+            "arlo_kianos_zimmer": "input_text.assist_arlo_status_kiano",
+        }
+        entity_id = mapping.get(cfg["source"])
+        _LOGGER.info("%s: %s", cfg["label"], value)
+        if entity_id:
+            await self.set_helper(entity_id, value)
+
     async def stream_url(self, camera: str) -> str:
         if self.ws is None:
             raise RuntimeError("Home Assistant websocket unavailable")
         errors = []
-        for agent in ("arlo", "linux"):
+        for agent in ("linux", "arlo"):
             try:
                 result = await self.ws.rpc(
                     {"type": "aarlo_stream_url", "entity_id": camera, "user_agent": agent},
@@ -262,8 +274,9 @@ class ArloVoiceListener:
         while True:
             proc = None
             try:
-                await self.status(f"Arlo Voice: verbinde {label} dauerhaft")
+                await self.camera_status(cfg, "Verbinde Dauerstream")
                 url = await self.stream_url(camera)
+                await self.camera_status(cfg, "Stream-URL erhalten")
                 cmd = ["ffmpeg", "-nostdin", "-hide_banner", "-loglevel", "error"]
                 if url.lower().startswith(("rtsp://", "rtsps://")):
                     cmd += ["-rtsp_transport", "tcp"]
@@ -283,8 +296,16 @@ class ArloVoiceListener:
                 speech: list[bytes] = []
                 silence = 0
                 connected_announced = False
+                first_frame = True
                 while True:
-                    frame = await proc.stdout.readexactly(FRAME_BYTES)
+                    if first_frame:
+                        try:
+                            frame = await asyncio.wait_for(proc.stdout.readexactly(FRAME_BYTES), timeout=15.0)
+                        except TimeoutError as err:
+                            raise RuntimeError("Kein Audioframe innerhalb 15 s") from err
+                        first_frame = False
+                    else:
+                        frame = await proc.stdout.readexactly(FRAME_BYTES)
                     rms = frame_rms(frame)
                     if not speaking:
                         noise = noise * 0.985 + min(rms, max(noise * 3, 1200)) * 0.015
@@ -293,7 +314,7 @@ class ArloVoiceListener:
                     pre.append(frame)
                     if not connected_announced:
                         connected_announced = True
-                        await self.status(f"Arlo Voice: {label} hört dauerhaft")
+                        await self.camera_status(cfg, "Hört dauerhaft")
                     if not speaking:
                         hot = hot + 1 if active else max(0, hot - 1)
                         if hot >= START_FRAMES:
@@ -323,7 +344,7 @@ class ArloVoiceListener:
                 raise
             except Exception as err:
                 _LOGGER.warning("Arlo continuous audio failed for %s: %s", label, err)
-                await self.status(f"Arlo Voice {label}: Streamfehler, verbinde neu")
+                await self.camera_status(cfg, f"Streamfehler: {type(err).__name__}: {str(err)[:140]}")
             finally:
                 if proc and proc.returncode is None:
                     proc.kill()
