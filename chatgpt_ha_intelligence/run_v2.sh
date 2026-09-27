@@ -23,6 +23,7 @@ UNIFIED_PORT=8765
 BRIDGE_PID=""
 PROXY_PID=""
 TUNNEL_PID=""
+ARLO_VOICE_PID=""
 OPTIONS_MUTATED=0
 
 opt() {
@@ -35,7 +36,7 @@ cleanup() {
     cp -f "${OPTIONS_BACKUP}" "${OPTIONS}"
     OPTIONS_MUTATED=0
   fi
-  for pid in "${TUNNEL_PID}" "${PROXY_PID}" "${BRIDGE_PID}"; do
+  for pid in "${TUNNEL_PID}" "${ARLO_VOICE_PID}" "${PROXY_PID}" "${BRIDGE_PID}"; do
     if [[ -n "${pid}" ]] && kill -0 "${pid}" 2>/dev/null; then
       kill "${pid}" 2>/dev/null || true
     fi
@@ -83,7 +84,7 @@ probe_admin_mcp() {
     -H "Content-Type: application/json" \
     -H "Accept: application/json" \
     -X POST \
-    --data '{"jsonrpc":"2.0","id":"probe","method":"initialize","params":{"protocolVersion":"2026-07-28","capabilities":{},"clientInfo":{"name":"chatgpt-ha-addon-probe","version":"2.1.10"}}}' \
+    --data '{"jsonrpc":"2.0","id":"probe","method":"initialize","params":{"protocolVersion":"2026-07-28","capabilities":{},"clientInfo":{"name":"chatgpt-ha-addon-probe","version":"2.1.11"}}}' \
     http://supervisor/core/api/mcp/chatgpt_ha_admin 2>/dev/null || true)"
   [[ -n "${response}" ]] && [[ "$(printf '%s' "${response}" | jq -r '.result.protocolVersion // empty' 2>/dev/null || true)" != "" ]]
 }
@@ -111,6 +112,9 @@ REQUIRE_HASH="$(opt require_hash_for_writes true)"
 MAX_READ_BYTES="$(opt max_read_bytes 2000000)"
 AUTO_RESTART="$(opt auto_restart false)"
 LOG_LEVEL="$(opt log_level INFO)"
+ARLO_VOICE_ENABLED="$(opt arlo_voice_enabled true)"
+ARLO_VOICE_CAPTURE_SECONDS="$(opt arlo_voice_capture_seconds 8)"
+ARLO_VOICE_RECORDING_FALLBACK="$(opt arlo_voice_recording_fallback true)"
 TUNNEL_ID="$(opt tunnel_id '')"
 RUNTIME_API_KEY="$(opt runtime_api_key '')"
 
@@ -259,6 +263,16 @@ python3 -u /app/unified_mcp.py &
 PROXY_PID=$!
 wait_http "http://127.0.0.1:${UNIFIED_PORT}/health" "Unified MCP" 60
 
+if [[ "${ARLO_VOICE_ENABLED}" == "true" ]]; then
+  export ARLO_VOICE_CAPTURE_SECONDS
+  export ARLO_VOICE_RECORDING_FALLBACK
+  echo "Starting Arlo camera voice listener..."
+  python3 -u /app/arlo_voice_listener.py &
+  ARLO_VOICE_PID=$!
+else
+  echo "Arlo camera voice listener is disabled."
+fi
+
 if [[ -n "${TUNNEL_ID}" || -n "${RUNTIME_API_KEY}" ]]; then
   if [[ -z "${TUNNEL_ID}" || -z "${RUNTIME_API_KEY}" ]]; then
     echo "ERROR: tunnel_id and runtime_api_key must either both be configured or both be empty." >&2
@@ -283,11 +297,14 @@ else
 fi
 
 set +e
-if [[ -n "${TUNNEL_PID}" ]]; then
-  wait -n "${BRIDGE_PID}" "${PROXY_PID}" "${TUNNEL_PID}"
-else
-  wait -n "${BRIDGE_PID}" "${PROXY_PID}"
+WAIT_PIDS=("${BRIDGE_PID}" "${PROXY_PID}")
+if [[ -n "${ARLO_VOICE_PID}" ]]; then
+  WAIT_PIDS+=("${ARLO_VOICE_PID}")
 fi
+if [[ -n "${TUNNEL_PID}" ]]; then
+  WAIT_PIDS+=("${TUNNEL_PID}")
+fi
+wait -n "${WAIT_PIDS[@]}"
 STATUS=$?
 set -e
 
