@@ -1,5 +1,5 @@
 name: "ChatGPT Home Assistant Admin + Intelligence"
-version: "2.1.10"
+version: "2.1.11"
 slug: "chatgpt_ha_intelligence"
 description: >-
   Einheitliche ChatGPT-MCP-App für Home-Assistant-Administration,
@@ -36,6 +36,9 @@ options:
   tunnel_id: ""
   runtime_api_key: ""
   log_level: "INFO"
+  arlo_voice_enabled: true
+  arlo_voice_capture_seconds: 8
+  arlo_voice_recording_fallback: true
 schema:
   auto_restart: bool
   write_enabled: bool
@@ -50,3 +53,6 @@ schema:
   tunnel_id: str
   runtime_api_key: password
   log_level: "list(DEBUG|INFO|WARNING|ERROR)"
+  arlo_voice_enabled: bool
+  arlo_voice_capture_seconds: "int(4,20)"
+  arlo_voice_recording_fallback: bool
