@@ -332,7 +332,7 @@ class ArloVoiceListener:
                 while True:
                     if first_frame:
                         try:
-                            frame = await asyncio.wait_for(proc.stdout.readexactly(FRAME_BYTES), timeout=15.0)
+                            frame = await asyncio.wait_for(proc.stdout.readexactly(FRAME_BYTES), timeout=45.0)
                         except TimeoutError as err:
                             stderr_text = ""
                             if proc.returncode is None:
@@ -343,7 +343,7 @@ class ArloVoiceListener:
                             except Exception:
                                 pass
                             detail = f" / ffmpeg: {stderr_text}" if stderr_text else ""
-                            raise RuntimeError(f"Kein Audioframe innerhalb 15 s{detail}") from err
+                            raise RuntimeError(f"Kein Audioframe innerhalb 45 s{detail}") from err
                         first_frame = False
                     else:
                         frame = await proc.stdout.readexactly(FRAME_BYTES)
