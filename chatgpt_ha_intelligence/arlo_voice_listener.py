@@ -1,11 +1,15 @@
 from __future__ import annotations
 
 import asyncio
+import io
 import json
 import logging
 import os
 import time
 import unicodedata
+import wave
+from array import array
+from collections import deque
 from dataclasses import dataclass
 from typing import Any
 
@@ -19,46 +23,36 @@ _LOGGER = logging.getLogger("arlo-voice-listener")
 TOKEN = os.environ.get("SUPERVISOR_TOKEN", "")
 HA_API = "http://supervisor/core/api"
 HA_WS = "ws://supervisor/core/websocket"
-CAPTURE_SECONDS = float(os.environ.get("ARLO_VOICE_CAPTURE_SECONDS", "8"))
-RECORDING_FALLBACK = os.environ.get("ARLO_VOICE_RECORDING_FALLBACK", "true").lower() == "true"
 STT_ENGINE = os.environ.get("ARLO_VOICE_STT_ENGINE", "stt.home_assistant_cloud")
+SAMPLE_RATE = 16000
+FRAME_MS = 20
+FRAME_BYTES = SAMPLE_RATE * 2 * FRAME_MS // 1000
+PRE_ROLL_FRAMES = 30
+START_FRAMES = 3
+END_SILENCE_FRAMES = 45
+MAX_SPEECH_FRAMES = 600
+MIN_SPEECH_FRAMES = 30
 
 CAMERAS = {
-    "binary_sensor.aarlo_sound_schlafzimmer": {
-        "camera": "camera.aarlo_schlafzimmer",
-        "source": "arlo_schlafzimmer",
-        "label": "Schlafzimmer",
-    },
-    "binary_sensor.aarlo_sound_rileys_zimmer": {
-        "camera": "camera.aarlo_rileys_zimmer",
-        "source": "arlo_rileys_zimmer",
-        "label": "Rileys Zimmer",
-    },
-    "binary_sensor.aarlo_sound_kianos_zimmer": {
-        "camera": "camera.aarlo_kianos_zimmer",
-        "source": "arlo_kianos_zimmer",
-        "label": "Kianos Zimmer",
-    },
+    "camera.aarlo_schlafzimmer": {"source": "arlo_schlafzimmer", "label": "Schlafzimmer"},
+    "camera.aarlo_rileys_zimmer": {"source": "arlo_rileys_zimmer", "label": "Rileys Zimmer"},
+    "camera.aarlo_kianos_zimmer": {"source": "arlo_kianos_zimmer", "label": "Kianos Zimmer"},
 }
-
 WAKE_WORDS = {
     "jarvis", "jarwis", "jervis", "jarves", "javis", "charvis",
     "djarvis", "jarvi", "jarvice", "jarwisch", "jarwitz",
 }
-
 
 @dataclass
 class CommandDecision:
     command: str | None
     wake_only: bool = False
 
-
 def normalize(text: str) -> str:
     value = unicodedata.normalize("NFD", str(text or "").lower())
     value = "".join(ch for ch in value if unicodedata.category(ch) != "Mn")
     value = "".join(ch if (ch.isalnum() or ch in " äöüß") else " " for ch in value)
     return " ".join(value.split())
-
 
 def distance(a: str, b: str) -> int:
     if a == b:
@@ -71,7 +65,6 @@ def distance(a: str, b: str) -> int:
         prev = cur
     return prev[-1]
 
-
 def parse_wake(text: str) -> CommandDecision:
     words = normalize(text).split()
     for idx, word in enumerate(words):
@@ -80,22 +73,36 @@ def parse_wake(text: str) -> CommandDecision:
             return CommandDecision(command=command or None, wake_only=not bool(command))
     return CommandDecision(command=None, wake_only=False)
 
+def frame_rms(frame: bytes) -> float:
+    if len(frame) < 2:
+        return 0.0
+    samples = array("h")
+    samples.frombytes(frame)
+    if not samples:
+        return 0.0
+    total = sum(int(v) * int(v) for v in samples)
+    return (total / len(samples)) ** 0.5
+
+def wav_bytes(raw_pcm: bytes) -> bytes:
+    buf = io.BytesIO()
+    with wave.open(buf, "wb") as wf:
+        wf.setnchannels(1)
+        wf.setsampwidth(2)
+        wf.setframerate(SAMPLE_RATE)
+        wf.writeframes(raw_pcm)
+    return buf.getvalue()
 
 class HAWebSocket:
-    def __init__(self, token: str, on_event):
+    def __init__(self, token: str):
         self.token = token
-        self.on_event = on_event
         self.ws = None
         self.receiver_task: asyncio.Task | None = None
         self.pending: dict[int, asyncio.Future] = {}
-        self.next_id = 10
+        self.next_id = 20
 
     async def connect(self) -> None:
         self.ws = await websockets.connect(
-            HA_WS,
-            ping_interval=20,
-            ping_timeout=20,
-            close_timeout=5,
+            HA_WS, ping_interval=20, ping_timeout=20, close_timeout=5,
             max_size=16 * 1024 * 1024,
         )
         hello = json.loads(await self.ws.recv())
@@ -106,9 +113,6 @@ class HAWebSocket:
         if auth.get("type") != "auth_ok":
             raise RuntimeError(f"Home Assistant websocket authentication failed: {auth}")
         self.receiver_task = asyncio.create_task(self._receiver())
-        result = await self.rpc({"type": "subscribe_events", "event_type": "state_changed"})
-        if not result.get("success"):
-            raise RuntimeError(f"state_changed subscription failed: {result}")
 
     async def _receiver(self) -> None:
         assert self.ws is not None
@@ -120,12 +124,6 @@ class HAWebSocket:
                     fut = self.pending.pop(msg_id)
                     if not fut.done():
                         fut.set_result(msg)
-                    continue
-                if msg.get("type") == "event":
-                    try:
-                        self.on_event(msg.get("event") or {})
-                    except Exception:
-                        _LOGGER.exception("Event handler failed")
         finally:
             err = ConnectionError("Home Assistant websocket closed")
             for fut in list(self.pending.values()):
@@ -152,21 +150,19 @@ class HAWebSocket:
         if self.ws is not None:
             await self.ws.close()
 
-
 class ArloVoiceListener:
     def __init__(self, token: str):
         self.token = token
         self.ws: HAWebSocket | None = None
         self.http = httpx.AsyncClient(
             headers={"Authorization": f"Bearer {token}"},
-            timeout=httpx.Timeout(40.0, connect=10.0),
+            timeout=httpx.Timeout(45.0, connect=10.0),
             follow_redirects=True,
         )
-        self.locks = {cfg["camera"]: asyncio.Lock() for cfg in CAMERAS.values()}
-        self.last_trigger: dict[str, float] = {}
         self.armed_until: dict[str, float] = {}
         self.last_command = ""
         self.last_command_at = 0.0
+        self.stt_locks = {camera: asyncio.Lock() for camera in CAMERAS}
 
     async def close(self) -> None:
         await self.http.aclose()
@@ -184,91 +180,26 @@ class ArloVoiceListener:
         _LOGGER.info(value)
         await self.set_helper("input_text.assist_arlo_status", value)
 
-    async def get_state(self, entity_id: str) -> dict[str, Any] | None:
-        try:
-            response = await self.http.get(f"{HA_API}/states/{entity_id}")
-            if response.status_code != 200:
-                return None
-            return response.json()
-        except Exception:
-            return None
-
-    def event(self, event: dict[str, Any]) -> None:
-        data = event.get("data") or {}
-        entity_id = data.get("entity_id")
-        cfg = CAMERAS.get(entity_id)
-        if cfg is None:
-            return
-        new_state = data.get("new_state") or {}
-        old_state = data.get("old_state") or {}
-        if new_state.get("state") != "on" or old_state.get("state") == "on":
-            return
-        now = time.monotonic()
-        if now - self.last_trigger.get(entity_id, 0.0) < 8.0:
-            return
-        self.last_trigger[entity_id] = now
-        asyncio.create_task(self.handle_sound(cfg))
-
     async def stream_url(self, camera: str) -> str:
         if self.ws is None:
             raise RuntimeError("Home Assistant websocket unavailable")
-        last_error = ""
+        errors = []
         for agent in ("arlo", "linux"):
             try:
                 result = await self.ws.rpc(
-                    {
-                        "type": "aarlo_stream_url",
-                        "entity_id": camera,
-                        "user_agent": agent,
-                    },
-                    timeout=25,
+                    {"type": "aarlo_stream_url", "entity_id": camera, "user_agent": agent},
+                    timeout=30,
                 )
                 if result.get("success"):
                     url = (result.get("result") or {}).get("url")
                     if url:
                         return str(url)
-                last_error = str(result)
+                errors.append(str(result))
             except Exception as err:
-                last_error = f"{type(err).__name__}: {err}"
-        raise RuntimeError(f"Unable to obtain Arlo stream URL: {last_error}")
+                errors.append(f"{type(err).__name__}: {err}")
+        raise RuntimeError("; ".join(errors)[-700:])
 
-    async def audio_to_wav(self, source: str, seconds: float) -> bytes:
-        cmd = ["ffmpeg", "-nostdin", "-hide_banner", "-loglevel", "error"]
-        if source.lower().startswith(("rtsp://", "rtsps://")):
-            cmd += ["-rtsp_transport", "tcp"]
-        cmd += [
-            "-i", source,
-            "-map", "0:a:0?",
-            "-vn",
-            "-ac", "1",
-            "-ar", "16000",
-            "-c:a", "pcm_s16le",
-            "-t", str(max(2.0, seconds)),
-            "-f", "wav",
-            "pipe:1",
-        ]
-        proc = await asyncio.create_subprocess_exec(
-            *cmd,
-            stdout=asyncio.subprocess.PIPE,
-            stderr=asyncio.subprocess.PIPE,
-        )
-        try:
-            stdout, stderr = await asyncio.wait_for(
-                proc.communicate(), timeout=max(25.0, seconds + 20.0)
-            )
-        except TimeoutError:
-            proc.kill()
-            await proc.communicate()
-            raise RuntimeError("ffmpeg audio capture timed out")
-        if proc.returncode not in (0, None) and len(stdout) < 1024:
-            raise RuntimeError(
-                f"ffmpeg failed ({proc.returncode}): {stderr.decode(errors='ignore')[-500:]}"
-            )
-        if len(stdout) < 1024:
-            raise RuntimeError("Arlo stream contained no usable audio")
-        return stdout
-
-    async def transcribe(self, wav_data: bytes) -> str | None:
+    async def transcribe(self, raw_pcm: bytes) -> str | None:
         response = await self.http.post(
             f"{HA_API}/stt/{STT_ENGINE}",
             headers={
@@ -278,113 +209,148 @@ class ArloVoiceListener:
                 ),
                 "Content-Type": "audio/wav",
             },
-            content=wav_data,
+            content=wav_bytes(raw_pcm),
         )
         if response.status_code != 200:
-            raise RuntimeError(
-                f"STT HTTP {response.status_code}: {response.text[:300]}"
-            )
+            raise RuntimeError(f"STT HTTP {response.status_code}: {response.text[:300]}")
         data = response.json()
         if data.get("result") != "success":
             return None
         text = str(data.get("text") or "").strip()
         return text or None
 
-    async def execute_text(self, cfg: dict[str, str], text: str) -> bool:
-        label = cfg["label"]
-        source = cfg["source"]
-        await self.set_helper(
-            "input_text.assist_arlo_letzte_erkennung", f"{label}: {text}"
-        )
+    async def execute_text(self, camera: str, cfg: dict[str, str], text: str) -> None:
+        label, source = cfg["label"], cfg["source"]
+        await self.set_helper("input_text.assist_arlo_letzte_erkennung", f"{label}: {text}")
         decision = parse_wake(text)
         now = time.monotonic()
         command = decision.command
         if decision.wake_only:
             self.armed_until[source] = now + 15.0
-            await self.status(f"Arlo Voice {label}: Jarvis erkannt, 15 s Folgefenster")
-            return True
+            await self.status(f"Arlo {label}: Jarvis erkannt, warte 15 s auf Befehl")
+            return
         if command is None and self.armed_until.get(source, 0.0) > now:
             command = normalize(text)
-            self.armed_until[source] = 0.0
         if not command:
-            await self.status(f"Arlo Voice {label}: Sprache erkannt, kein Jarvis")
-            return False
+            return
         normalized = normalize(command)
-        if normalized == self.last_command and now - self.last_command_at < 12.0:
-            return True
-        self.last_command = normalized
-        self.last_command_at = now
+        if normalized == self.last_command and now - self.last_command_at < 10.0:
+            return
+        self.last_command, self.last_command_at = normalized, now
         self.armed_until[source] = 0.0
-        await self.status(f"Arlo Voice {label}: Befehl -> {command}")
+        await self.status(f"Arlo {label}: Befehl -> {command}")
         response = await self.http.post(
             f"{HA_API}/services/script/jarvis_sprachbefehl",
-            json={
-                "befehl": command,
-                "quelle": source,
-                "antwort_ausgeben": True,
-            },
+            json={"befehl": command, "quelle": source, "antwort_ausgeben": True},
         )
         response.raise_for_status()
-        return True
 
-    async def recording_fallback(
-        self,
-        cfg: dict[str, str],
-        previous_video: str | None,
-    ) -> None:
-        if not RECORDING_FALLBACK:
-            return
-        camera = cfg["camera"]
-        label = cfg["label"]
-        for _ in range(8):
-            await asyncio.sleep(5)
-            state = await self.get_state(camera)
-            video = ((state or {}).get("attributes") or {}).get("last_video")
-            if not video or video == previous_video:
-                continue
-            try:
-                await self.status(f"Arlo Voice {label}: prüfe neuen Arlo-Clip")
-                wav = await self.audio_to_wav(str(video), 15)
-                text = await self.transcribe(wav)
-                if text:
-                    await self.execute_text(cfg, text)
-            except Exception as err:
-                _LOGGER.warning("Recording fallback failed for %s: %s", label, err)
-            return
-
-    async def handle_sound(self, cfg: dict[str, str]) -> None:
-        camera = cfg["camera"]
-        label = cfg["label"]
-        lock = self.locks[camera]
+    async def process_segment(self, camera: str, cfg: dict[str, str], raw_pcm: bytes) -> None:
+        lock = self.stt_locks[camera]
         if lock.locked():
             return
         async with lock:
-            state = await self.get_state(camera)
-            previous_video = ((state or {}).get("attributes") or {}).get("last_video")
-            handled = False
             try:
-                await self.status(f"Arlo Voice {label}: Sound erkannt, öffne Audiostream")
-                url = await self.stream_url(camera)
-                wav = await self.audio_to_wav(url, CAPTURE_SECONDS)
-                text = await self.transcribe(wav)
+                text = await self.transcribe(raw_pcm)
                 if text:
-                    handled = await self.execute_text(cfg, text)
-                else:
-                    await self.status(f"Arlo Voice {label}: keine Sprache erkannt")
+                    await self.execute_text(camera, cfg, text)
             except Exception as err:
-                _LOGGER.warning("Live audio failed for %s: %s", label, err)
-                await self.status(
-                    f"Arlo Voice {label}: Live-Audio Fehler {type(err).__name__}"
+                _LOGGER.warning("STT failed for %s: %s", cfg["label"], err)
+
+    async def camera_loop(self, camera: str, cfg: dict[str, str]) -> None:
+        label = cfg["label"]
+        while True:
+            proc = None
+            try:
+                await self.status(f"Arlo Voice: verbinde {label} dauerhaft")
+                url = await self.stream_url(camera)
+                cmd = ["ffmpeg", "-nostdin", "-hide_banner", "-loglevel", "error"]
+                if url.lower().startswith(("rtsp://", "rtsps://")):
+                    cmd += ["-rtsp_transport", "tcp"]
+                cmd += [
+                    "-i", url, "-map", "0:a:0?", "-vn",
+                    "-ac", "1", "-ar", str(SAMPLE_RATE),
+                    "-c:a", "pcm_s16le", "-f", "s16le", "pipe:1",
+                ]
+                proc = await asyncio.create_subprocess_exec(
+                    *cmd, stdout=asyncio.subprocess.PIPE, stderr=asyncio.subprocess.PIPE
                 )
-            if not handled:
-                await self.recording_fallback(cfg, previous_video)
+                assert proc.stdout is not None
+                pre = deque(maxlen=PRE_ROLL_FRAMES)
+                noise = 180.0
+                hot = 0
+                speaking = False
+                speech: list[bytes] = []
+                silence = 0
+                connected_announced = False
+                while True:
+                    frame = await proc.stdout.readexactly(FRAME_BYTES)
+                    rms = frame_rms(frame)
+                    if not speaking:
+                        noise = noise * 0.985 + min(rms, max(noise * 3, 1200)) * 0.015
+                    threshold = max(380.0, noise * 2.6)
+                    active = rms >= threshold
+                    pre.append(frame)
+                    if not connected_announced:
+                        connected_announced = True
+                        await self.status(f"Arlo Voice: {label} hört dauerhaft")
+                    if not speaking:
+                        hot = hot + 1 if active else max(0, hot - 1)
+                        if hot >= START_FRAMES:
+                            speaking = True
+                            speech = list(pre)
+                            silence = 0
+                    else:
+                        speech.append(frame)
+                        if active:
+                            silence = 0
+                        else:
+                            silence += 1
+                        if silence >= END_SILENCE_FRAMES or len(speech) >= MAX_SPEECH_FRAMES:
+                            frames = speech[:-silence] if silence and len(speech) > silence else speech
+                            if len(frames) >= MIN_SPEECH_FRAMES:
+                                asyncio.create_task(self.process_segment(camera, cfg, b"".join(frames)))
+                            speaking = False
+                            speech = []
+                            hot = 0
+                            silence = 0
+                            pre.clear()
+            except asyncio.IncompleteReadError:
+                _LOGGER.warning("Arlo audio stream ended for %s", label)
+            except asyncio.CancelledError:
+                if proc and proc.returncode is None:
+                    proc.kill()
+                raise
+            except Exception as err:
+                _LOGGER.warning("Arlo continuous audio failed for %s: %s", label, err)
+                await self.status(f"Arlo Voice {label}: Streamfehler, verbinde neu")
+            finally:
+                if proc and proc.returncode is None:
+                    proc.kill()
+                    try:
+                        await proc.wait()
+                    except Exception:
+                        pass
+            await asyncio.sleep(3)
 
     async def run_once(self) -> None:
-        self.ws = HAWebSocket(self.token, self.event)
+        self.ws = HAWebSocket(self.token)
         await self.ws.connect()
-        await self.status("Arlo Voice: verbunden / 3 Kamera-Mikrofone bereit")
+        await self.status("Arlo Voice: starte 3 dauerhafte Mikrofonstreams")
+        tasks = [
+            asyncio.create_task(self.camera_loop(camera, cfg))
+            for camera, cfg in CAMERAS.items()
+        ]
         assert self.ws.receiver_task is not None
-        await self.ws.receiver_task
+        tasks.append(self.ws.receiver_task)
+        done, pending = await asyncio.wait(tasks, return_when=asyncio.FIRST_COMPLETED)
+        for task in pending:
+            task.cancel()
+        await asyncio.gather(*pending, return_exceptions=True)
+        for task in done:
+            exc = task.exception()
+            if exc:
+                raise exc
 
     async def run(self) -> None:
         while True:
@@ -393,10 +359,8 @@ class ArloVoiceListener:
             except asyncio.CancelledError:
                 raise
             except Exception as err:
-                _LOGGER.exception("Arlo voice websocket loop failed")
-                await self.status(
-                    f"Arlo Voice: Verbindung unterbrochen ({type(err).__name__})"
-                )
+                _LOGGER.exception("Arlo voice loop failed")
+                await self.status(f"Arlo Voice: Verbindung unterbrochen ({type(err).__name__})")
                 await asyncio.sleep(5)
             finally:
                 if self.ws is not None:
@@ -406,7 +370,6 @@ class ArloVoiceListener:
                         pass
                 self.ws = None
 
-
 async def main() -> None:
     if not TOKEN:
         raise SystemExit("SUPERVISOR_TOKEN missing")
@@ -415,7 +378,6 @@ async def main() -> None:
         await listener.run()
     finally:
         await listener.close()
-
 
 if __name__ == "__main__":
     asyncio.run(main())
