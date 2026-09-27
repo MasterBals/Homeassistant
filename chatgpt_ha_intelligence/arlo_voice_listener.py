@@ -34,9 +34,21 @@ MAX_SPEECH_FRAMES = 600
 MIN_SPEECH_FRAMES = 30
 
 CAMERAS = {
-    "camera.aarlo_schlafzimmer": {"source": "arlo_schlafzimmer", "label": "Schlafzimmer"},
-    "camera.aarlo_rileys_zimmer": {"source": "arlo_rileys_zimmer", "label": "Rileys Zimmer"},
-    "camera.aarlo_kianos_zimmer": {"source": "arlo_kianos_zimmer", "label": "Kianos Zimmer"},
+    "camera.aarlo_schlafzimmer": {
+        "source": "arlo_schlafzimmer",
+        "label": "Schlafzimmer",
+        "sound": "binary_sensor.aarlo_sound_schlafzimmer",
+    },
+    "camera.aarlo_rileys_zimmer": {
+        "source": "arlo_rileys_zimmer",
+        "label": "Rileys Zimmer",
+        "sound": "binary_sensor.aarlo_sound_rileys_zimmer",
+    },
+    "camera.aarlo_kianos_zimmer": {
+        "source": "arlo_kianos_zimmer",
+        "label": "Kianos Zimmer",
+        "sound": "binary_sensor.aarlo_sound_kianos_zimmer",
+    },
 }
 WAKE_WORDS = {
     "jarvis", "jarwis", "jervis", "jarves", "javis", "charvis",
@@ -164,6 +176,10 @@ class ArloVoiceListener:
         self.last_command = ""
         self.last_command_at = 0.0
         self.stt_locks = {camera: asyncio.Lock() for camera in CAMERAS}
+        self.seen_video: dict[str, str | None] = {}
+        self.sound_state: dict[str, str] = {}
+        self.live_ready: dict[str, bool] = {camera: False for camera in CAMERAS}
+        self.background_tasks: set[asyncio.Task] = set()
 
     async def close(self) -> None:
         await self.http.aclose()
@@ -191,6 +207,103 @@ class ArloVoiceListener:
         _LOGGER.info("%s: %s", cfg["label"], value)
         if entity_id:
             await self.set_helper(entity_id, value)
+
+    async def get_state(self, entity_id: str) -> dict[str, Any] | None:
+        try:
+            response = await self.http.get(f"{HA_API}/states/{entity_id}")
+            if response.status_code != 200:
+                return None
+            return response.json()
+        except Exception as err:
+            _LOGGER.debug("Unable to read %s: %s", entity_id, err)
+            return None
+
+    def spawn(self, coro) -> None:
+        task = asyncio.create_task(coro)
+        self.background_tasks.add(task)
+        task.add_done_callback(self.background_tasks.discard)
+
+    async def recording_audio(self, url: str, seconds: float = 25.0) -> bytes:
+        cmd = [
+            "ffmpeg", "-nostdin", "-hide_banner", "-loglevel", "error",
+            "-i", url,
+            "-map", "0:a:0?", "-vn",
+            "-ac", "1", "-ar", str(SAMPLE_RATE),
+            "-c:a", "pcm_s16le",
+            "-t", str(seconds),
+            "-f", "s16le", "pipe:1",
+        ]
+        proc = await asyncio.create_subprocess_exec(
+            *cmd, stdout=asyncio.subprocess.PIPE, stderr=asyncio.subprocess.PIPE
+        )
+        try:
+            stdout, stderr = await asyncio.wait_for(proc.communicate(), timeout=40.0)
+        except TimeoutError:
+            proc.kill()
+            await proc.communicate()
+            raise RuntimeError("Clip-Audio ffmpeg timeout")
+        if len(stdout) < 1024:
+            detail = stderr.decode(errors="ignore").strip().replace("\n", " ")[-350:]
+            raise RuntimeError(f"Clip enthält keine lesbare Audiospur{': ' + detail if detail else ''}")
+        return stdout
+
+    async def process_recording(self, camera: str, cfg: dict[str, str], url: str) -> None:
+        if self.live_ready.get(camera):
+            return
+        lock = self.stt_locks[camera]
+        if lock.locked():
+            return
+        async with lock:
+            try:
+                await self.camera_status(cfg, "Clip-Fallback: prüfe neue Aufnahme")
+                raw_pcm = await self.recording_audio(url)
+                text = await self.transcribe(raw_pcm)
+                if text:
+                    await self.execute_text(camera, cfg, text)
+                else:
+                    await self.camera_status(cfg, "Clip-Fallback bereit / keine Sprache erkannt")
+            except Exception as err:
+                _LOGGER.warning("Recording audio failed for %s: %s", cfg["label"], err)
+                await self.camera_status(
+                    cfg, f"Clip-Fallback: {type(err).__name__}: {str(err)[:150]}"
+                )
+
+    async def recording_fallback_loop(self) -> None:
+        for camera, cfg in CAMERAS.items():
+            state = await self.get_state(camera)
+            attrs = (state or {}).get("attributes") or {}
+            self.seen_video[camera] = attrs.get("last_video")
+            sound = await self.get_state(cfg["sound"])
+            self.sound_state[camera] = (sound or {}).get("state", "off")
+
+        while True:
+            for camera, cfg in CAMERAS.items():
+                state = await self.get_state(camera)
+                attrs = (state or {}).get("attributes") or {}
+                url = attrs.get("last_video")
+                if url and url != self.seen_video.get(camera):
+                    self.seen_video[camera] = str(url)
+                    if not self.live_ready.get(camera):
+                        self.spawn(self.process_recording(camera, cfg, str(url)))
+
+                sound = await self.get_state(cfg["sound"])
+                current_sound = (sound or {}).get("state", "off")
+                previous_sound = self.sound_state.get(camera, "off")
+                self.sound_state[camera] = current_sound
+                if (
+                    current_sound == "on"
+                    and previous_sound != "on"
+                    and not self.live_ready.get(camera)
+                ):
+                    try:
+                        await self.camera_status(cfg, "Sound erkannt / starte Sprachclip")
+                        await self.http.post(
+                            f"{HA_API}/services/aarlo/camera_start_recording",
+                            json={"entity_id": camera, "duration": 15},
+                        )
+                    except Exception as err:
+                        _LOGGER.warning("Unable to start sound recording for %s: %s", cfg["label"], err)
+            await asyncio.sleep(2.0)
 
     async def reset_camera_stream(self, camera: str) -> None:
         try:
@@ -301,6 +414,7 @@ class ArloVoiceListener:
 
     async def camera_loop(self, camera: str, cfg: dict[str, str]) -> None:
         label = cfg["label"]
+        failures = 0
         while True:
             proc = None
             try:
@@ -355,6 +469,8 @@ class ArloVoiceListener:
                     pre.append(frame)
                     if not connected_announced:
                         connected_announced = True
+                        failures = 0
+                        self.live_ready[camera] = True
                         await self.camera_status(cfg, "Hört dauerhaft")
                     if not speaking:
                         hot = hot + 1 if active else max(0, hot - 1)
@@ -378,14 +494,27 @@ class ArloVoiceListener:
                             silence = 0
                             pre.clear()
             except asyncio.IncompleteReadError:
+                self.live_ready[camera] = False
+                failures += 1
                 _LOGGER.warning("Arlo audio stream ended for %s", label)
+                await self.camera_status(cfg, "Live-Audio beendet / Clip-Fallback aktiv")
             except asyncio.CancelledError:
                 if proc and proc.returncode is None:
                     proc.kill()
                 raise
             except Exception as err:
+                self.live_ready[camera] = False
+                failures += 1
                 _LOGGER.warning("Arlo continuous audio failed for %s: %s", label, err)
-                await self.camera_status(cfg, f"Streamfehler: {type(err).__name__}: {str(err)[:140]}")
+                if failures >= 3:
+                    await self.camera_status(
+                        cfg,
+                        f"Clip-Fallback aktiv / Live-Audio: {type(err).__name__}: {str(err)[:105]}"
+                    )
+                else:
+                    await self.camera_status(
+                        cfg, f"Streamfehler: {type(err).__name__}: {str(err)[:140]}"
+                    )
             finally:
                 if proc and proc.returncode is None:
                     proc.kill()
@@ -393,7 +522,7 @@ class ArloVoiceListener:
                         await proc.wait()
                     except Exception:
                         pass
-            await asyncio.sleep(3)
+            await asyncio.sleep(300 if failures >= 3 else 3)
 
     async def run_once(self) -> None:
         self.ws = HAWebSocket(self.token)
@@ -403,6 +532,7 @@ class ArloVoiceListener:
             asyncio.create_task(self.camera_loop(camera, cfg))
             for camera, cfg in CAMERAS.items()
         ]
+        tasks.append(asyncio.create_task(self.recording_fallback_loop()))
         assert self.ws.receiver_task is not None
         tasks.append(self.ws.receiver_task)
         done, pending = await asyncio.wait(tasks, return_when=asyncio.FIRST_COMPLETED)
