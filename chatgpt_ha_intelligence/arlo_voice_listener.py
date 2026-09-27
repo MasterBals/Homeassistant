@@ -192,10 +192,39 @@ class ArloVoiceListener:
         if entity_id:
             await self.set_helper(entity_id, value)
 
+    async def reset_camera_stream(self, camera: str) -> None:
+        try:
+            await self.http.post(
+                f"{HA_API}/services/aarlo/camera_stop_activity",
+                json={"entity_id": camera},
+            )
+            await asyncio.sleep(1.0)
+        except Exception as err:
+            _LOGGER.debug("Unable to reset %s before stream: %s", camera, err)
+
     async def stream_url(self, camera: str) -> str:
         if self.ws is None:
             raise RuntimeError("Home Assistant websocket unavailable")
+
+        await self.reset_camera_stream(camera)
         errors = []
+
+        try:
+            result = await self.ws.rpc(
+                {"type": "camera/stream", "entity_id": camera, "format": "hls"},
+                timeout=40,
+            )
+            if result.get("success"):
+                url = (result.get("result") or {}).get("url")
+                if url:
+                    value = str(url)
+                    if value.startswith("/"):
+                        value = "http://supervisor/core" + value
+                    return value
+            errors.append("camera/stream: " + str(result))
+        except Exception as err:
+            errors.append(f"camera/stream {type(err).__name__}: {err}")
+
         for agent in ("linux", "arlo"):
             try:
                 result = await self.ws.rpc(
@@ -206,10 +235,11 @@ class ArloVoiceListener:
                     url = (result.get("result") or {}).get("url")
                     if url:
                         return str(url)
-                errors.append(str(result))
+                errors.append(f"aarlo/{agent}: {result}")
             except Exception as err:
-                errors.append(f"{type(err).__name__}: {err}")
-        raise RuntimeError("; ".join(errors)[-700:])
+                errors.append(f"aarlo/{agent} {type(err).__name__}: {err}")
+
+        raise RuntimeError("; ".join(errors)[-900:])
 
     async def transcribe(self, raw_pcm: bytes) -> str | None:
         response = await self.http.post(
@@ -276,8 +306,10 @@ class ArloVoiceListener:
             try:
                 await self.camera_status(cfg, "Verbinde Dauerstream")
                 url = await self.stream_url(camera)
-                await self.camera_status(cfg, "Stream-URL erhalten")
+                await self.camera_status(cfg, "HA-Stream-URL erhalten")
                 cmd = ["ffmpeg", "-nostdin", "-hide_banner", "-loglevel", "error"]
+                if url.startswith("http://supervisor/core/"):
+                    cmd += ["-headers", f"Authorization: Bearer {self.token}\\r\\n"]
                 if url.lower().startswith(("rtsp://", "rtsps://")):
                     cmd += ["-rtsp_transport", "tcp"]
                 cmd += [
