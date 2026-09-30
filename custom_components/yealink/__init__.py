@@ -35,11 +35,12 @@ async def async_setup_entry(
     )
     entry.runtime_data = coordinator
 
-    await hass.config_entries.async_forward_entry_setups(entry, PLATFORMS)
-
-    # Register Bluetooth callbacks after entities are ready. Cached advertisements
-    # are replayed, so a nearby RoomSensor normally connects immediately.
+    # Start listening first, then bootstrap from the cached discovery packet.
+    # This avoids waiting for a second advertisement before the first GATT read.
     entry.async_on_unload(coordinator.async_start())
+    await coordinator.async_initialize()
+
+    await hass.config_entries.async_forward_entry_setups(entry, PLATFORMS)
 
     return True
 
