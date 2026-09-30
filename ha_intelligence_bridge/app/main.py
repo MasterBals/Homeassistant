@@ -1,5 +1,5 @@
 from __future__ import annotations
-import asyncio, hmac, ipaddress, json, logging, os, subprocess, uuid
+import asyncio, hmac, ipaddress, json, logging, os, subprocess, time, uuid
 from collections import Counter, defaultdict
 from pathlib import Path
 from typing import Any, Literal
@@ -11,7 +11,7 @@ from starlette.requests import Request
 from starlette.responses import JSONResponse
 from xml.etree import ElementTree as ET
 
-VERSION='0.1.0'
+VERSION='0.2.0'
 OPT=json.loads(Path('/data/options.json').read_text())
 TOKEN=str(OPT.get('mcp_token','')).strip()
 if not TOKEN or TOKEN=='CHANGE_ME_BEFORE_STARTING':
@@ -260,6 +260,58 @@ async def network_scan_result(job_id:str,offset:int=0,limit:int=100)->dict[str,A
     return {'status':j['status'],'total':len(hosts),'offset':o,'returned':len(hosts[o:o+l]),'hosts':hosts[o:o+l]}
 
 @mcp.tool()
+async def _bluetoothctl_capture(seconds:int)->dict[str,Any]:
+    seconds=min(max(int(seconds),5),120)
+    proc=await asyncio.create_subprocess_exec(
+        'bluetoothctl','--timeout',str(seconds),'scan','on',
+        stdout=asyncio.subprocess.PIPE,stderr=asyncio.subprocess.PIPE
+    )
+    out,err=await asyncio.wait_for(proc.communicate(),timeout=seconds+10)
+    text=(out+b'\n'+err).decode(errors='replace')
+    devices={}
+    current=None
+    for raw in text.splitlines():
+        line=raw.replace('\\x1b[0;94m','').replace('\\x1b[0m','').strip()
+        if 'Device ' in line:
+            tail=line.split('Device ',1)[1]
+            parts=tail.split(' ',1)
+            if parts and len(parts[0])==17 and parts[0].count(':')==5:
+                current=parts[0].upper()
+                d=devices.setdefault(current,{'address':current,'name':None,'rssi':None,'manufacturer_data':[],'service_data':[],'uuids':[],'raw_lines':[]})
+                if len(parts)>1 and not parts[1].startswith(('RSSI:','ManufacturerData','ServiceData','UUIDs:')):
+                    d['name']=parts[1].strip()
+        if current:
+            d=devices[current]
+            if len(d['raw_lines'])<80:
+                d['raw_lines'].append(raw[-500:])
+            s=raw.strip()
+            if 'RSSI:' in s:
+                try:d['rssi']=int(s.rsplit('RSSI:',1)[1].strip())
+                except Exception:pass
+            if 'ManufacturerData' in s:
+                d['manufacturer_data'].append(s[-500:])
+            if 'ServiceData' in s:
+                d['service_data'].append(s[-500:])
+            if 'UUIDs:' in s:
+                d['uuids'].append(s.rsplit('UUIDs:',1)[1].strip())
+    return {'backend':'bluetoothctl','capture_seconds':seconds,'device_count':len(devices),'devices':list(devices.values()),'stderr_tail':err.decode(errors='replace')[-1000:]}
+
+@mcp.tool()
+async def bluetooth_scan(seconds:int=30,query:str='')->dict[str,Any]:
+    """Capture nearby Bluetooth LE advertisements read-only. Returns address/name/RSSI and raw bluetoothctl advertisement fields for protocol analysis."""
+    result=await _bluetoothctl_capture(seconds)
+    q=query.casefold().strip()
+    if q:
+        vals=[]
+        for d in result['devices']:
+            if q in json.dumps(d,ensure_ascii=False).casefold():
+                vals.append(d)
+        result['devices']=vals
+        result['device_count']=len(vals)
+        result['query']=query
+    result['captured_at_unix']=int(time.time())
+    return result
+
 async def network_scan_unmanaged(job_id:str)->dict[str,Any]:
     j=JOBS.get(job_id)
     if not j:
