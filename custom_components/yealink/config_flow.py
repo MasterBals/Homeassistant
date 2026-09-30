@@ -48,7 +48,7 @@ class YealinkConfigFlow(ConfigFlow, domain=DOMAIN):
             "name": self._title,
             "address": discovery_info.address,
         }
-        return await self.async_step_bluetooth_confirm()
+        return self._create_entry()
 
     async def async_step_bluetooth_confirm(
         self,
