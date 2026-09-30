@@ -1,0 +1,86 @@
+"""Yealink RoomSensor Bluetooth profile."""
+
+from __future__ import annotations
+
+from dataclasses import replace
+
+from ..models import RoomSensorData
+
+UUID_TEMPERATURE = "00002a6e-0000-1000-8000-00805f9b34fb"
+UUID_HUMIDITY = "00002a6f-0000-1000-8000-00805f9b34fb"
+UUID_IRRADIANCE = "00002a77-0000-1000-8000-00805f9b34fb"
+UUID_BATTERY = "00002a19-0000-1000-8000-00805f9b34fb"
+UUID_OCCUPANCY = "00002a58-0000-1000-8000-00805f9b34fb"
+
+UUID_MANUFACTURER = "00002a29-0000-1000-8000-00805f9b34fb"
+UUID_MODEL = "00002a24-0000-1000-8000-00805f9b34fb"
+UUID_SERIAL = "00002a25-0000-1000-8000-00805f9b34fb"
+UUID_FIRMWARE = "00002a26-0000-1000-8000-00805f9b34fb"
+UUID_HARDWARE = "00002a27-0000-1000-8000-00805f9b34fb"
+UUID_SOFTWARE = "00002a28-0000-1000-8000-00805f9b34fb"
+
+NOTIFY_UUIDS = (
+    UUID_TEMPERATURE,
+    UUID_HUMIDITY,
+    UUID_IRRADIANCE,
+    UUID_BATTERY,
+    UUID_OCCUPANCY,
+)
+
+MEASUREMENT_UUIDS = NOTIFY_UUIDS
+
+INFO_UUIDS = (
+    UUID_MANUFACTURER,
+    UUID_MODEL,
+    UUID_SERIAL,
+    UUID_FIRMWARE,
+    UUID_HARDWARE,
+    UUID_SOFTWARE,
+)
+
+
+def decode_measurement(
+    current: RoomSensorData,
+    uuid: str,
+    value: bytes,
+) -> RoomSensorData:
+    """Decode a RoomSensor GATT measurement."""
+    uuid = uuid.lower()
+
+    if uuid == UUID_TEMPERATURE and len(value) >= 2:
+        return replace(
+            current,
+            temperature=int.from_bytes(value[:2], "little", signed=True) / 100.0,
+        )
+
+    if uuid == UUID_HUMIDITY and len(value) >= 2:
+        return replace(
+            current,
+            humidity=int.from_bytes(value[:2], "little", signed=False) / 100.0,
+        )
+
+    if uuid == UUID_IRRADIANCE:
+        return replace(
+            current,
+            light_raw=int.from_bytes(value, "little", signed=False),
+            light_raw_hex=value.hex(),
+        )
+
+    if uuid == UUID_BATTERY and value:
+        return replace(
+            current,
+            battery=int.from_bytes(value[:1], "little", signed=False),
+        )
+
+    if uuid == UUID_OCCUPANCY and value:
+        return replace(
+            current,
+            occupancy=int.from_bytes(value, "little", signed=False) != 0,
+        )
+
+    return current
+
+
+def decode_text(value: bytes) -> str:
+    """Decode a Device Information Service string."""
+    return value.decode("utf-8", errors="replace").rstrip("\x00")
