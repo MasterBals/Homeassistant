@@ -1,80 +1,63 @@
-# Homeassistant
-Dashboards und Cards
-# Chur Abfall
+# Yealink Devices for Home Assistant
 
-Home Assistant Custom Integration für Abfalltermine der Stadt Chur. Die Integration liest ausschliesslich die offizielle Quelle `https://www.chur.ch/abfallstrassenabschnitte`, ermittelt Strassenabschnitte automatisch und stellt Termine als Sensoren, Kalender und Lovelace Card bereit.
+Native Bluetooth integration for supported Yealink devices.
 
-## Screenshots
+## Supported devices
 
-> Platzhalter: Screenshots können nach der Installation aus dem Dashboard ergänzt werden.
+### Yealink RoomSensor
+Automatic Bluetooth discovery for devices advertising as `RoomSensor-*` with Yealink manufacturer ID `0x0850`.
 
-## Installation über HACS
+Entities:
+- Temperature
+- Humidity
+- Occupancy
+- Battery
+- Light value (raw GATT Irradiance value, pending final Yealink scaling)
+- Bluetooth RSSI (diagnostic, disabled by default)
+- Bluetooth connection (diagnostic, disabled by default)
 
-1. HACS → Integrationen → Benutzerdefiniertes Repository.
-2. Repository-URL eintragen und Kategorie **Integration** wählen.
-3. **Chur Abfall** installieren.
-4. Home Assistant neu starten.
-5. Einstellungen → Geräte & Dienste → Integration hinzufügen → **Chur Abfall**.
+The integration also reads Yealink device metadata such as model, serial number, firmware, software and hardware revision from the standard Device Information Service.
 
-## Manuelle Installation
+## Architecture
 
-Kopiere `custom_components/chur_abfall` nach `<config>/custom_components/chur_abfall` und starte Home Assistant neu. Die Lovelace Card und ihre Bilder werden automatisch aus der Integration ausgeliefert.
+The integration uses Home Assistant's Bluetooth stack and `ActiveBluetoothDataUpdateCoordinator`. It listens for advertisements, opens a managed BLE connection when required, subscribes to GATT notifications and performs periodic health polling.
 
-## Konfiguration
+Product-specific protocol code lives in `custom_components/yealink/profiles/`. New Yealink products can therefore be added without changing the RoomSensor protocol implementation.
 
-Der Config Flow lädt die Strassenliste live von der offiziellen Churer Seite. Wähle eine oder mehrere Strassen und optional Sammelarten wie Papier, Karton, Kompost und Kehricht.
+Planned device family:
+- RoomSensor
+- VCM36-W and other Yealink wireless peripherals after their protocol has been captured and documented
 
-## Dashboard
+## RoomSensor GATT mapping
 
-Die Lovelace Card wird von der Integration automatisch als Frontend-Modul registriert. Eine manuelle Ressource unter `/local/chur_abfall/chur-abfall-card.js` ist nicht nötig.
+| Function | GATT characteristic | Decoding |
+| --- | --- | --- |
+| Temperature | `0x2A6E` | signed little-endian / 100 °C |
+| Humidity | `0x2A6F` | unsigned little-endian / 100 % |
+| Irradiance / light | `0x2A77` | raw unsigned little-endian value |
+| Battery | `0x2A19` | percent |
+| Occupancy | `0x2A58` | 0 = clear, non-zero = occupied |
 
-Beispielkarte:
+The light characteristic is exposed deliberately as a raw value until the Yealink-specific conversion to lux or another photometric quantity is verified.
 
-```yaml
-type: custom:chur-abfall-card
-entity: sensor.chur_abfall_nachste_abfuhr
-title: Chur Abfall
-waste_types:
-  - Karton
-  - Papier
-  - Kompost
-  - Kehricht
-animate: true
-show_street: true
-compact: false
-```
+## Installation
 
-## Services
+The intended distribution method is HACS as a custom integration. After installation and a Home Assistant restart, nearby supported RoomSensors should appear automatically under **Settings → Devices & services**.
 
-- `chur_abfall.refresh`: Daten sofort aktualisieren.
-- `chur_abfall.reload`: Integration neu laden.
-- `chur_abfall.export`: Termine als Service-Antwort exportieren.
+Manual installation is also possible by copying `custom_components/yealink` into Home Assistant's `/config/custom_components/` directory and restarting Home Assistant.
 
-# Chur Kultur
+## Development
 
-Home Assistant Custom Integration für Veranstaltungen von `https://www.chur-kultur.ch/de/agenda`.
-Die Integration lädt die Agenda mit konfigurierbarem Zeitraum, Tag-IDs und optionalem Suchtext.
+The first implementation was validated against a real Yealink RoomSensor:
+- Manufacturer: Yealink
+- Model: RoomSensor
+- Firmware: 8.510.0.65
+- Bluetooth manufacturer ID: 0x0850
 
-## Dashboard Karte
+The design intentionally keeps device detection, transport/coordinator and product profiles separate so future Yealink devices can use BLE, Wi-Fi or another local transport while sharing one Home Assistant integration domain.
 
-Die Lovelace Card wird automatisch als Frontend-Modul registriert.
+## Status
 
-```yaml
-type: custom:chur-kultur-card
-entity: sensor.chur_kultur_veranstaltungen
-title: Chur Kultur
-max_items: 8
-show_images: true
-```
+Version 0.1.0 is the first RoomSensor implementation. Temperature, humidity, occupancy and battery have been verified against a physical device. Light reporting is implemented but its final scale still needs validation.
 
-Ein Klick auf einen Eintrag öffnet ein Detail-Popup mit Bild, Ort, Kategorie, Beschreibung und Link zur Originalseite.
-
-## Troubleshooting
-
-- Wenn keine Strassen erscheinen, prüfe die Erreichbarkeit der offiziellen Churer Webseite aus Home Assistant.
-- Nach Änderungen an der Card Browser-Cache leeren oder Home Assistant neu starten.
-- Logs für `custom_components.chur_abfall` aktivieren, um Parser- und Netzwerkhinweise zu sehen.
-
-## Lizenz
-
-MIT
+This project is community-developed and is not affiliated with or endorsed by Yealink.
