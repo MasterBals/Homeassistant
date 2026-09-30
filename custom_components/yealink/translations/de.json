@@ -1,0 +1,35 @@
+{
+  "title": "Yealink Geräte",
+  "config": {
+    "step": {
+      "bluetooth_confirm": {
+        "title": "Yealink-Gerät erkannt",
+        "description": "{name} ({address}) in Home Assistant einrichten?"
+      },
+      "user": {
+        "title": "Yealink-Gerät auswählen",
+        "data": {
+          "address": "Gerät"
+        }
+      }
+    },
+    "abort": {
+      "already_configured": "Dieses Gerät ist bereits eingerichtet.",
+      "no_devices_found": "Es wurden keine unterstützten Yealink-Geräte in der Nähe gefunden.",
+      "unsupported_device": "Dieses Yealink-Gerät wird noch nicht unterstützt."
+    }
+  },
+  "entity": {
+    "sensor": {
+      "temperature": {"name": "Temperatur"},
+      "humidity": {"name": "Luftfeuchtigkeit"},
+      "light_raw": {"name": "Lichtwert"},
+      "battery": {"name": "Batterie"},
+      "signal_strength": {"name": "Signalstärke"}
+    },
+    "binary_sensor": {
+      "occupancy": {"name": "Belegung"},
+      "connection": {"name": "Bluetooth-Verbindung"}
+    }
+  }
+}
