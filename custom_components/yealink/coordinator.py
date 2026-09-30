@@ -71,6 +71,41 @@ class RoomSensorCoordinator(
         """Return whether the BLE connection is active."""
         return self._client is not None and self._client.is_connected
 
+    @property
+    def available(self) -> bool:
+        """Return whether the RoomSensor is currently usable."""
+        return self.connected or super().available
+
+    async def async_initialize(self) -> bool:
+        """Perform an initial GATT read from Home Assistant's cached discovery."""
+        service_info = bluetooth.async_last_service_info(
+            self.hass,
+            self._address,
+            connectable=True,
+        )
+        if service_info is None:
+            self.logger.debug(
+                "No cached Bluetooth service info available for %s",
+                self._address,
+            )
+            return False
+
+        self._last_service_info = service_info
+        try:
+            self.data = await self._do_poll(service_info)
+        except Exception:
+            self.last_poll_successful = False
+            self.logger.exception(
+                "%s: Initial RoomSensor GATT read failed",
+                self._address,
+            )
+            return False
+
+        self._available = True
+        self.last_poll_successful = True
+        self.async_update_listeners()
+        return True
+
     @callback
     def _needs_poll(
         self,
