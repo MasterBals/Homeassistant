@@ -1,0 +1,19 @@
+{
+  "domain": "yealink",
+  "name": "Yealink Devices",
+  "version": "0.1.0",
+  "config_flow": true,
+  "documentation": "https://github.com/MasterBals/Homeassistant",
+  "issue_tracker": "https://github.com/MasterBals/Homeassistant/issues",
+  "codeowners": ["@MasterBals"],
+  "dependencies": ["bluetooth_adapters"],
+  "integration_type": "device",
+  "iot_class": "local_push",
+  "bluetooth": [
+    {
+      "connectable": true,
+      "local_name": "RoomSensor-*",
+      "manufacturer_id": 2128
+    }
+  ]
+}
