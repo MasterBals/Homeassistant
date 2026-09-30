@@ -21,7 +21,8 @@ RUN apk add --no-cache \
     avahi-tools \
     netcat-openbsd \
     arp-scan \
-    ffmpeg
+    ffmpeg \
+    bluez
 
 RUN echo "Bundling Homeassistant source for ${BUILD_VERSION}" \
     && git clone --depth 1 --branch main https://github.com/MasterBals/Homeassistant.git /opt/homeassistant-source
