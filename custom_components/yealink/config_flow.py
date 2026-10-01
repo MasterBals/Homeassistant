@@ -13,9 +13,28 @@ from homeassistant.components.bluetooth import (
 from homeassistant.config_entries import ConfigFlow, ConfigFlowResult
 from homeassistant.const import CONF_ADDRESS
 from homeassistant.helpers.device_registry import format_mac
+from homeassistant.helpers.service_info.usb import UsbServiceInfo
 
-from .const import CONF_DEVICE_TYPE, DOMAIN
+from .const import (
+    CONF_DEVICE_TYPE,
+    CONF_USB_PATH,
+    CONF_USB_SERIAL,
+    DEVICE_TYPE_VCM36W,
+    DOMAIN,
+    VCM36W_USB_PID,
+    VCM36W_USB_VID,
+)
 from .profiles import detect_device_type, is_supported
+
+
+def _normalize_usb_id(value: str | int | None) -> str:
+    """Normalize a USB VID/PID to four uppercase hex characters."""
+    if value is None:
+        return ""
+    if isinstance(value, int):
+        return f"{value:04X}"
+    text = str(value).upper().removeprefix("0X")
+    return text.zfill(4)
 
 
 class YealinkConfigFlow(ConfigFlow, domain=DOMAIN):
@@ -30,6 +49,9 @@ class YealinkConfigFlow(ConfigFlow, domain=DOMAIN):
         self._address: str | None = None
         self._device_type: str | None = None
         self._title = "Yealink"
+
+        self._usb_info: UsbServiceInfo | None = None
+        self._usb_unique_id: str | None = None
 
     async def async_step_bluetooth(
         self,
@@ -67,11 +89,67 @@ class YealinkConfigFlow(ConfigFlow, domain=DOMAIN):
             },
         )
 
+    async def async_step_usb(
+        self,
+        discovery_info: UsbServiceInfo,
+    ) -> ConfigFlowResult:
+        """Handle automatic USB discovery for VCM36-W."""
+        vid = _normalize_usb_id(discovery_info.vid)
+        pid = _normalize_usb_id(discovery_info.pid)
+        if vid != VCM36W_USB_VID or pid != VCM36W_USB_PID:
+            return self.async_abort(reason="unsupported_device")
+
+        serial = (discovery_info.serial_number or "").strip()
+        fallback = f"{vid}:{pid}:{discovery_info.device}"
+        unique_id = f"vcm36w:{serial or fallback}"
+
+        await self.async_set_unique_id(unique_id)
+        self._abort_if_unique_id_configured()
+
+        self._usb_info = discovery_info
+        self._usb_unique_id = unique_id
+        self._device_type = DEVICE_TYPE_VCM36W
+        self._title = discovery_info.description or "Yealink VCM36-W"
+
+        self.context["title_placeholders"] = {
+            "name": self._title,
+            "serial": serial or "—",
+        }
+        return await self.async_step_usb_confirm()
+
+    async def async_step_usb_confirm(
+        self,
+        user_input: dict[str, Any] | None = None,
+    ) -> ConfigFlowResult:
+        """Confirm a discovered VCM36-W."""
+        if self._usb_info is None:
+            return self.async_abort(reason="unsupported_device")
+
+        if user_input is not None:
+            serial = (self._usb_info.serial_number or "").strip()
+            return self.async_create_entry(
+                title=self._title,
+                data={
+                    CONF_DEVICE_TYPE: DEVICE_TYPE_VCM36W,
+                    CONF_USB_PATH: self._usb_info.device,
+                    CONF_USB_SERIAL: serial,
+                },
+            )
+
+        return self.async_show_form(
+            step_id="usb_confirm",
+            data_schema=vol.Schema({}),
+            description_placeholders={
+                "name": self._title,
+                "serial": (self._usb_info.serial_number or "").strip() or "—",
+            },
+        )
+
     async def async_step_user(
         self,
         user_input: dict[str, Any] | None = None,
     ) -> ConfigFlowResult:
-        """Allow manual setup from currently discovered Yealink devices."""
+        """Allow manual setup from currently discovered Bluetooth Yealink devices."""
         if user_input is not None:
             address = user_input[CONF_ADDRESS]
             info = self._discovered_devices[address]
@@ -105,14 +183,14 @@ class YealinkConfigFlow(ConfigFlow, domain=DOMAIN):
         )
 
     def _set_device(self, info: BluetoothServiceInfoBleak) -> None:
-        """Store selected discovery data."""
+        """Store selected Bluetooth discovery data."""
         self._discovery_info = info
         self._address = format_mac(info.address)
         self._device_type = detect_device_type(info)
         self._title = info.name or f"Yealink {self._address}"
 
     def _create_entry(self) -> ConfigFlowResult:
-        """Create the config entry."""
+        """Create a Bluetooth config entry."""
         assert self._address is not None
         assert self._device_type is not None
         return self.async_create_entry(
