@@ -4,9 +4,10 @@ from __future__ import annotations
 
 import logging
 
-from homeassistant.config_entries import ConfigEntry
+from homeassistant.config_entries import ConfigEntry, SOURCE_USB
 from homeassistant.const import CONF_ADDRESS, Platform
 from homeassistant.core import HomeAssistant
+from homeassistant.helpers.typing import ConfigType
 
 from .const import (
     CONF_DEVICE_TYPE,
@@ -14,9 +15,10 @@ from .const import (
     CONF_USB_SERIAL,
     DEVICE_TYPE_ROOM_SENSOR,
     DEVICE_TYPE_VCM36W,
+    DOMAIN,
 )
 from .coordinator import RoomSensorCoordinator
-from .vcm36w import Vcm36wCoordinator
+from .vcm36w import Vcm36wCoordinator, find_vcm36w_usb_service_info
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -24,6 +26,24 @@ PLATFORMS: list[Platform] = [Platform.SENSOR, Platform.BINARY_SENSOR]
 
 type YealinkRuntime = RoomSensorCoordinator | Vcm36wCoordinator
 type YealinkConfigEntry = ConfigEntry[YealinkRuntime]
+
+
+async def async_setup(hass: HomeAssistant, config: ConfigType) -> bool:
+    """Set up Yealink Devices and discover HID-only VCM36-W hardware."""
+    service_info = await hass.async_add_executor_job(find_vcm36w_usb_service_info)
+    if service_info is not None:
+        try:
+            await hass.config_entries.flow.async_init(
+                DOMAIN,
+                context={"source": SOURCE_USB},
+                data=service_info,
+            )
+        except Exception:
+            _LOGGER.debug(
+                "Unable to start VCM36-W HID discovery flow",
+                exc_info=True,
+            )
+    return True
 
 
 async def async_setup_entry(
