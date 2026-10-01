@@ -1,4 +1,4 @@
-"""Read-only USB coordinator for Yealink VCM36-W."""
+"""Read-only USB/HID support for Yealink VCM36-W."""
 
 from __future__ import annotations
 
@@ -7,6 +7,7 @@ from datetime import timedelta
 from pathlib import Path
 
 from homeassistant.core import HomeAssistant
+from homeassistant.helpers.service_info.usb import UsbServiceInfo
 from homeassistant.helpers.update_coordinator import DataUpdateCoordinator
 
 from .models import Vcm36wData
@@ -21,6 +22,44 @@ def _read_text(path: Path) -> str | None:
         return path.read_text(errors="replace").strip()
     except (OSError, UnicodeError):
         return None
+
+
+def _find_hidraw(device_dir: Path) -> str | None:
+    """Return the first hidraw device belonging to this USB device."""
+    for interface in device_dir.parent.glob(f"{device_dir.name}:*"):
+        if (_read_text(interface / "bInterfaceClass") or "").lower() != "03":
+            continue
+        for path in interface.rglob("hidraw*"):
+            if path.name.startswith("hidraw") and path.name[6:].isdigit():
+                return f"/dev/{path.name}"
+    return None
+
+
+def find_vcm36w_usb_service_info() -> UsbServiceInfo | None:
+    """Find an attached VCM36-W even though it exposes HID and no serial TTY."""
+    if not _USB_SYSFS.exists():
+        return None
+
+    for device_dir in _USB_SYSFS.iterdir():
+        vid = (_read_text(device_dir / "idVendor") or "").lower()
+        pid = (_read_text(device_dir / "idProduct") or "").lower()
+        if vid != _VID.lower() or pid not in _PIDS:
+            continue
+
+        hidraw = _find_hidraw(device_dir)
+        if hidraw is None:
+            continue
+
+        return UsbServiceInfo(
+            device=hidraw,
+            vid=vid.upper(),
+            pid=pid.upper(),
+            serial_number=_read_text(device_dir / "serial"),
+            manufacturer=_read_text(device_dir / "manufacturer") or "Yealink",
+            description=_read_text(device_dir / "product") or "VCM36-W",
+        )
+
+    return None
 
 
 class Vcm36wCoordinator(DataUpdateCoordinator[Vcm36wData]):
@@ -71,12 +110,7 @@ class Vcm36wCoordinator(DataUpdateCoordinator[Vcm36wData]):
             if self._serial_number and serial and serial != self._serial_number:
                 continue
 
-            busnum = _read_text(device_dir / "busnum")
-            devnum = _read_text(device_dir / "devnum")
-            usb_path = self._discovery_path
-            if busnum and devnum:
-                usb_path = f"/dev/bus/usb/{int(busnum):03d}/{int(devnum):03d}"
-
+            usb_path = _find_hidraw(device_dir) or self._discovery_path
             has_hid, has_audio = self._interface_flags(device_dir)
             return Vcm36wData(
                 connected=True,
