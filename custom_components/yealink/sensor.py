@@ -22,6 +22,8 @@ from homeassistant.helpers.entity_platform import AddConfigEntryEntitiesCallback
 from homeassistant.helpers.typing import StateType
 
 from . import YealinkConfigEntry
+from .const import CONF_DEVICE_TYPE, DEVICE_TYPE_ROOM_SENSOR
+from .coordinator import RoomSensorCoordinator
 from .entity import YealinkRoomSensorEntity
 from .models import RoomSensorData
 
@@ -84,7 +86,11 @@ async def async_setup_entry(
     async_add_entities: AddConfigEntryEntitiesCallback,
 ) -> None:
     """Set up Yealink sensors."""
+    if entry.data[CONF_DEVICE_TYPE] != DEVICE_TYPE_ROOM_SENSOR:
+        return
+
     coordinator = entry.runtime_data
+    assert isinstance(coordinator, RoomSensorCoordinator)
     async_add_entities(
         YealinkRoomSensorSensor(coordinator, entry, description)
         for description in SENSORS
