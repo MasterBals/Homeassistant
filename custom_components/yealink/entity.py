@@ -1,4 +1,4 @@
-"""Base entity for Yealink devices."""
+"""Base entities for Yealink devices."""
 
 from __future__ import annotations
 
@@ -11,9 +11,12 @@ from homeassistant.helpers.device_registry import (
     DeviceInfo,
     format_mac,
 )
+from homeassistant.helpers.update_coordinator import CoordinatorEntity
 
 from . import YealinkConfigEntry
+from .const import DOMAIN
 from .coordinator import RoomSensorCoordinator
+from .vcm36w import Vcm36wCoordinator
 
 
 class YealinkRoomSensorEntity(
@@ -37,5 +40,28 @@ class YealinkRoomSensorEntity(
             connections={(CONNECTION_BLUETOOTH, address)},
             manufacturer="Yealink",
             model="RoomSensor",
+            name=entry.title,
+        )
+
+
+class YealinkVcm36wEntity(CoordinatorEntity[Vcm36wCoordinator]):
+    """Base entity for a Yealink VCM36-W."""
+
+    _attr_has_entity_name = True
+
+    def __init__(
+        self,
+        coordinator: Vcm36wCoordinator,
+        entry: YealinkConfigEntry,
+        key: str,
+    ) -> None:
+        """Initialize the VCM36-W entity."""
+        super().__init__(coordinator)
+        device_key = entry.unique_id or entry.entry_id
+        self._attr_unique_id = f"{device_key}_{key}"
+        self._attr_device_info = DeviceInfo(
+            identifiers={(DOMAIN, device_key)},
+            manufacturer="Yealink",
+            model="VCM36-W",
             name=entry.title,
         )
