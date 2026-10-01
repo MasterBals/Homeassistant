@@ -6,6 +6,10 @@
         "title": "Yealink device discovered",
         "description": "Set up {name} ({address}) in Home Assistant?"
       },
+      "usb_confirm": {
+        "title": "Yealink VCM36-W discovered",
+        "description": "Set up {name} (serial: {serial}) in Home Assistant?"
+      },
       "user": {
         "title": "Select a Yealink device",
         "data": {
@@ -21,15 +25,38 @@
   },
   "entity": {
     "sensor": {
-      "temperature": {"name": "Temperature"},
-      "humidity": {"name": "Humidity"},
-      "light_raw": {"name": "Light value"},
-      "battery": {"name": "Battery"},
-      "signal_strength": {"name": "Signal strength"}
+      "temperature": {
+        "name": "Temperature"
+      },
+      "humidity": {
+        "name": "Humidity"
+      },
+      "light_raw": {
+        "name": "Light value"
+      },
+      "battery": {
+        "name": "Battery"
+      },
+      "signal_strength": {
+        "name": "Signal strength"
+      }
     },
     "binary_sensor": {
-      "occupancy": {"name": "Occupancy"},
-      "connection": {"name": "Bluetooth connection"}
+      "occupancy": {
+        "name": "Occupancy"
+      },
+      "connection": {
+        "name": "Bluetooth connection"
+      },
+      "usb_connection": {
+        "name": "USB connection"
+      },
+      "hid_interface": {
+        "name": "Yealink HID management interface"
+      },
+      "usb_audio_interface": {
+        "name": "USB Audio interface"
+      }
     }
   }
 }
