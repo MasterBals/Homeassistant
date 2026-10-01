@@ -116,7 +116,20 @@ class YealinkConfigFlow(ConfigFlow, domain=DOMAIN):
             "name": self._title,
             "serial": serial or "—",
         }
-        return await self.async_step_usb_confirm()
+
+        # HID-only VCM36-W devices are discovered by the Yealink integration
+        # itself because Home Assistant's generic USB discovery scans serial
+        # TTY devices only. A physically attached, uniquely identified VCM36-W
+        # can therefore be created immediately without an extra confirmation
+        # step.
+        return self.async_create_entry(
+            title=self._title,
+            data={
+                CONF_DEVICE_TYPE: DEVICE_TYPE_VCM36W,
+                CONF_USB_PATH: discovery_info.device,
+                CONF_USB_SERIAL: serial,
+            },
+        )
 
     async def async_step_usb_confirm(
         self,
