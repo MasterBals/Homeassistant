@@ -25,6 +25,7 @@ from .const import (
     VCM36W_USB_VID,
 )
 from .profiles import detect_device_type, is_supported
+from .vcm36w import find_vcm36w_usb_service_info
 
 
 def _normalize_usb_id(value: str | int | None) -> str:
@@ -96,7 +97,7 @@ class YealinkConfigFlow(ConfigFlow, domain=DOMAIN):
         """Handle automatic USB discovery for VCM36-W."""
         vid = _normalize_usb_id(discovery_info.vid)
         pid = _normalize_usb_id(discovery_info.pid)
-        if vid != VCM36W_USB_VID or pid != VCM36W_USB_PID:
+        if vid != VCM36W_USB_VID or pid not in {VCM36W_USB_PID, "B068"}:
             return self.async_abort(reason="unsupported_device")
 
         serial = (discovery_info.serial_number or "").strip()
@@ -149,7 +150,7 @@ class YealinkConfigFlow(ConfigFlow, domain=DOMAIN):
         self,
         user_input: dict[str, Any] | None = None,
     ) -> ConfigFlowResult:
-        """Allow manual setup from currently discovered Bluetooth Yealink devices."""
+        """Allow manual setup from Bluetooth devices or an attached VCM36-W."""
         if user_input is not None:
             address = user_input[CONF_ADDRESS]
             info = self._discovered_devices[address]
@@ -166,6 +167,11 @@ class YealinkConfigFlow(ConfigFlow, domain=DOMAIN):
             self._discovered_devices[info.address] = info
 
         if not self._discovered_devices:
+            usb_info = await self.hass.async_add_executor_job(
+                find_vcm36w_usb_service_info
+            )
+            if usb_info is not None:
+                return await self.async_step_usb(usb_info)
             return self.async_abort(reason="no_devices_found")
 
         return self.async_show_form(
