@@ -10,8 +10,6 @@ from typing import Any
 
 from bleak import BleakClient
 from bleak.backends.characteristic import BleakGATTCharacteristic
-from bleak_retry_connector import establish_connection
-
 from homeassistant.components import bluetooth
 from homeassistant.components.bluetooth.active_update_coordinator import (
     ActiveBluetoothDataUpdateCoordinator,
@@ -146,14 +144,19 @@ class RoomSensorCoordinator(
         service_info: bluetooth.BluetoothServiceInfoBleak,
     ) -> None:
         """Open a managed BLE connection and subscribe to updates."""
-        client = await establish_connection(
-            BleakClient,
-            service_info.device,
+        # Yealink RoomSensor is more reliable when connected directly by BLE
+        # address. This matches the verified GATT probe used against the real
+        # device and avoids service-discovery disconnects seen through the
+        # generic retry connector on this firmware.
+        client = BleakClient(
             self._address,
             disconnected_callback=self._on_disconnect,
+            timeout=15.0,
         )
+        await client.connect()
 
         try:
+            self._client = client
             for uuid in NOTIFY_UUIDS:
                 try:
                     await client.start_notify(uuid, self._notification)
@@ -165,10 +168,9 @@ class RoomSensorCoordinator(
                         exc_info=True,
                     )
         except Exception:
+            self._client = None
             await client.disconnect()
             raise
-
-        self._client = client
 
     async def _read_measurements(self) -> None:
         """Read the standard GATT measurements."""
