@@ -6,6 +6,10 @@
         "title": "Yealink-Gerät erkannt",
         "description": "{name} ({address}) in Home Assistant einrichten?"
       },
+      "usb_confirm": {
+        "title": "Yealink VCM36-W erkannt",
+        "description": "{name} (Seriennummer: {serial}) in Home Assistant einrichten?"
+      },
       "user": {
         "title": "Yealink-Gerät auswählen",
         "data": {
@@ -21,15 +25,38 @@
   },
   "entity": {
     "sensor": {
-      "temperature": {"name": "Temperatur"},
-      "humidity": {"name": "Luftfeuchtigkeit"},
-      "light_raw": {"name": "Lichtwert"},
-      "battery": {"name": "Batterie"},
-      "signal_strength": {"name": "Signalstärke"}
+      "temperature": {
+        "name": "Temperatur"
+      },
+      "humidity": {
+        "name": "Luftfeuchtigkeit"
+      },
+      "light_raw": {
+        "name": "Lichtwert"
+      },
+      "battery": {
+        "name": "Batterie"
+      },
+      "signal_strength": {
+        "name": "Signalstärke"
+      }
     },
     "binary_sensor": {
-      "occupancy": {"name": "Belegung"},
-      "connection": {"name": "Bluetooth-Verbindung"}
+      "occupancy": {
+        "name": "Belegung"
+      },
+      "connection": {
+        "name": "Bluetooth-Verbindung"
+      },
+      "usb_connection": {
+        "name": "USB-Verbindung"
+      },
+      "hid_interface": {
+        "name": "Yealink-HID-Verwaltungsschnittstelle"
+      },
+      "usb_audio_interface": {
+        "name": "USB-Audio-Schnittstelle"
+      }
     }
   }
 }
