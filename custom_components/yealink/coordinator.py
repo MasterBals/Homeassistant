@@ -127,16 +127,34 @@ class RoomSensorCoordinator(
             if self._shutdown_requested:
                 return self.data
 
-            if not self.connected:
-                await self._connect(service_info)
+            last_error: Exception | None = None
+            for attempt in range(1, 4):
+                try:
+                    if not self.connected:
+                        await self._connect(service_info)
 
-            await self._read_measurements()
-            if not self._info_loaded:
-                await self._read_device_info()
-                self._info_loaded = True
-                self._update_device_registry()
+                    await self._read_measurements()
+                    if not self._info_loaded:
+                        await self._read_device_info()
+                        self._info_loaded = True
+                        self._update_device_registry()
 
-            self.data = replace(self.data, rssi=service_info.rssi)
+                    self.data = replace(self.data, rssi=service_info.rssi)
+                    return self.data
+                except Exception as err:
+                    last_error = err
+                    self.logger.debug(
+                        "%s: RoomSensor GATT attempt %s/3 failed",
+                        self._address,
+                        attempt,
+                        exc_info=True,
+                    )
+                    await self._disconnect_client()
+                    if attempt < 3 and not self._shutdown_requested:
+                        await asyncio.sleep(3)
+
+            if last_error is not None:
+                raise last_error
             return self.data
 
     async def _connect(
@@ -171,6 +189,20 @@ class RoomSensorCoordinator(
             self._client = None
             await client.disconnect()
             raise
+
+    async def _disconnect_client(self) -> None:
+        """Disconnect and clear the current BLE client."""
+        client = self._client
+        self._client = None
+        if client is not None and client.is_connected:
+            try:
+                await client.disconnect()
+            except Exception:
+                self.logger.debug(
+                    "Error disconnecting from %s during retry",
+                    self._address,
+                    exc_info=True,
+                )
 
     async def _read_measurements(self) -> None:
         """Read the standard GATT measurements."""
