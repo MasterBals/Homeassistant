@@ -8,12 +8,19 @@
       "manufacturer_id": 2128
     }
   ],
+  "usb": [
+    {
+      "vid": "6993",
+      "pid": "B06A",
+      "known_devices": ["Yealink VCM36-W"]
+    }
+  ],
   "codeowners": ["@MasterBals"],
   "config_flow": true,
-  "dependencies": ["bluetooth_adapters"],
+  "dependencies": ["bluetooth_adapters", "usb"],
   "documentation": "https://github.com/MasterBals/Homeassistant/tree/hacs-yealink",
   "integration_type": "device",
   "iot_class": "local_push",
   "issue_tracker": "https://github.com/MasterBals/Homeassistant/issues",
-  "version": "0.1.2"
+  "version": "0.2.0"
 }
