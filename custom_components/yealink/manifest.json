@@ -12,7 +12,13 @@
     {
       "vid": "6993",
       "pid": "B06A",
-      "known_devices": ["Yealink VCM36-W"]
+      "manufacturer": "Yealink",
+      "description": "VCM36-W"
+    },
+    {
+      "vid": "6993",
+      "pid": "B068",
+      "manufacturer": "Yealink"
     }
   ],
   "codeowners": ["@MasterBals"],
@@ -22,5 +28,5 @@
   "integration_type": "device",
   "iot_class": "local_push",
   "issue_tracker": "https://github.com/MasterBals/Homeassistant/issues",
-  "version": "0.2.0"
+  "version": "0.2.2"
 }
