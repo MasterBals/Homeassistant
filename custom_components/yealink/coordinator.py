@@ -10,6 +10,7 @@ from typing import Any
 
 from bleak import BleakClient
 from bleak.backends.characteristic import BleakGATTCharacteristic
+from bleak_retry_connector import BleakClientWithServiceCache, establish_connection
 from homeassistant.components import bluetooth
 from homeassistant.components.bluetooth.active_update_coordinator import (
     ActiveBluetoothDataUpdateCoordinator,
@@ -55,14 +56,23 @@ class RoomSensorCoordinator(
             needs_poll_method=self._needs_poll,
             poll_method=self._do_poll,
             mode=bluetooth.BluetoothScanningMode.ACTIVE,
-            connectable=True,
+            connectable=False,
         )
         self._address = format_mac(address)
         self._client: BleakClient | None = None
         self._poll_lock = asyncio.Lock()
         self._shutdown_requested = False
         self._info_loaded = False
+        self.last_error: str | None = None
         self.data = RoomSensorData()
+        self._cancel_raw_callback = bluetooth.async_register_callback(
+            hass,
+            self._raw_advertisement,
+            {"address": self._address, "connectable": False},
+            bluetooth.BluetoothScanningMode.ACTIVE,
+            scan_interval=60.0,
+            scan_duration=10.0,
+        )
 
     @property
     def connected(self) -> bool:
@@ -79,30 +89,46 @@ class RoomSensorCoordinator(
         service_info = bluetooth.async_last_service_info(
             self.hass,
             self._address,
-            connectable=True,
+            connectable=False,
         )
         if service_info is None:
             self.logger.debug(
-                "No cached Bluetooth service info available for %s",
+                "No cached Bluetooth service info available for %s; "
+                "attempting direct GATT connection",
                 self._address,
             )
-            return False
+        else:
+            self._last_service_info = service_info
 
-        self._last_service_info = service_info
         try:
             self.data = await self._do_poll(service_info)
-        except Exception:
+        except Exception as err:
+            self.last_error = f"{type(err).__name__}: {err}"
             self.last_poll_successful = False
             self.logger.exception(
                 "%s: Initial RoomSensor GATT read failed",
                 self._address,
             )
+            self._publish_debug_state("error", service_info)
             return False
 
+        self.last_error = None
         self._available = True
         self.last_poll_successful = True
+        self._publish_debug_state("ok", service_info)
         self.async_update_listeners()
         return True
+
+    @callback
+    def _raw_advertisement(
+        self,
+        service_info: bluetooth.BluetoothServiceInfoBleak,
+        _change: bluetooth.BluetoothChange,
+    ) -> None:
+        """Observe every advertisement for this configured RoomSensor."""
+        self._last_service_info = service_info
+        self.data = replace(self.data, rssi=service_info.rssi)
+        self._publish_debug_state("advertisement_seen", service_info)
 
     @callback
     def _needs_poll(
@@ -120,7 +146,7 @@ class RoomSensorCoordinator(
 
     async def _do_poll(
         self,
-        service_info: bluetooth.BluetoothServiceInfoBleak,
+        service_info: bluetooth.BluetoothServiceInfoBleak | None,
     ) -> RoomSensorData:
         """Connect to the RoomSensor and refresh all values."""
         async with self._poll_lock:
@@ -139,7 +165,9 @@ class RoomSensorCoordinator(
                         self._info_loaded = True
                         self._update_device_registry()
 
-                    self.data = replace(self.data, rssi=service_info.rssi)
+                    if service_info is not None:
+                        self.data = replace(self.data, rssi=service_info.rssi)
+                    self.last_error = None
                     return self.data
                 except Exception as err:
                     last_error = err
@@ -154,24 +182,57 @@ class RoomSensorCoordinator(
                         await asyncio.sleep(3)
 
             if last_error is not None:
+                self.last_error = f"{type(last_error).__name__}: {last_error}"
                 raise last_error
             return self.data
 
     async def _connect(
         self,
-        service_info: bluetooth.BluetoothServiceInfoBleak,
+        service_info: bluetooth.BluetoothServiceInfoBleak | None,
     ) -> None:
         """Open a managed BLE connection and subscribe to updates."""
-        # Yealink RoomSensor is more reliable when connected directly by BLE
-        # address. This matches the verified GATT probe used against the real
-        # device and avoids service-discovery disconnects seen through the
-        # generic retry connector on this firmware.
-        client = BleakClient(
+        # Prefer Home Assistant's managed connectable target when available.
+        # Yealink RoomSensors are, however, sometimes advertised by BlueZ/HA as
+        # non-connectable even though a direct GATT connection by address works.
+        # In that case fall back to BleakClient(address), which has been verified
+        # against the physical RoomSensor hardware.
+        target = bluetooth.async_ble_device_from_address(
+            self.hass,
             self._address,
-            disconnected_callback=self._on_disconnect,
-            timeout=15.0,
+            connectable=True,
         )
-        await client.connect()
+        if target is None and service_info is not None and service_info.connectable:
+            target = service_info.device
+
+        if target is not None:
+            try:
+                client = await establish_connection(
+                    BleakClientWithServiceCache,
+                    target,
+                    target.name or f"Yealink RoomSensor {self._address}",
+                    disconnected_callback=self._on_disconnect,
+                    max_attempts=3,
+                )
+            except Exception:
+                self.logger.debug(
+                    "%s: managed HA Bluetooth connection failed; "
+                    "falling back to direct address connection",
+                    self._address,
+                    exc_info=True,
+                )
+                client = BleakClient(
+                    self._address,
+                    disconnected_callback=self._on_disconnect,
+                    timeout=15.0,
+                )
+                await client.connect()
+        else:
+            client = BleakClient(
+                self._address,
+                disconnected_callback=self._on_disconnect,
+                timeout=15.0,
+            )
+            await client.connect()
 
         try:
             self._client = client
@@ -284,10 +345,47 @@ class RoomSensorCoordinator(
             hw_version=self.data.hardware,
         )
 
+    @callback
+    def _publish_debug_state(
+        self,
+        state: str,
+        service_info: bluetooth.BluetoothServiceInfoBleak | None = None,
+    ) -> None:
+        """Expose temporary runtime diagnostics while stabilizing the integration."""
+        suffix = self._address.replace(":", "")[-4:].lower()
+        resolved = bluetooth.async_ble_device_from_address(
+            self.hass,
+            self._address,
+            connectable=True,
+        )
+        self.hass.states.async_set(
+            f"sensor.yealink_roomsensor_{suffix}_diagnose",
+            state,
+            {
+                "friendly_name": f"Yealink RoomSensor {suffix.upper()} Diagnose",
+                "address": self._address,
+                "ble_connected": self.connected,
+                "last_poll_successful": self.last_poll_successful,
+                "last_error": self.last_error,
+                "connectable_device_present": resolved is not None,
+                "advertisement_connectable": (
+                    service_info.connectable if service_info is not None else None
+                ),
+                "advertisement_source": (
+                    service_info.source if service_info is not None else None
+                ),
+                "advertisement_name": (
+                    service_info.name if service_info is not None else None
+                ),
+                "rssi": service_info.rssi if service_info is not None else None,
+            },
+        )
+
     async def async_shutdown(self) -> None:
         """Stop Bluetooth callbacks and close the connection."""
         self._shutdown_requested = True
         self._async_stop()
+        self._cancel_raw_callback()
 
         async with self._poll_lock:
             client = self._client
