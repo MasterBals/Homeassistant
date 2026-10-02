@@ -13,9 +13,9 @@ from homeassistant.components.sensor import (
     SensorStateClass,
 )
 from homeassistant.const import (
+    LIGHT_LUX,
     PERCENTAGE,
     SIGNAL_STRENGTH_DECIBELS_MILLIWATT,
-    EntityCategory,
     UnitOfTemperature,
 )
 from homeassistant.core import HomeAssistant
@@ -55,6 +55,15 @@ SENSORS: tuple[YealinkSensorDescription, ...] = (
         state_class=SensorStateClass.MEASUREMENT,
         suggested_display_precision=1,
         value_fn=lambda data: data.humidity,
+    ),
+    YealinkSensorDescription(
+        key="illuminance",
+        translation_key="illuminance",
+        native_unit_of_measurement=LIGHT_LUX,
+        device_class=SensorDeviceClass.ILLUMINANCE,
+        state_class=SensorStateClass.MEASUREMENT,
+        suggested_display_precision=2,
+        value_fn=lambda data: data.illuminance_lux,
     ),
     YealinkSensorDescription(
         key="light_raw",
@@ -123,24 +132,29 @@ class YealinkRoomSensorSensor(YealinkRoomSensorEntity, SensorEntity):
 
     @property
     def extra_state_attributes(self) -> dict[str, Any] | None:
-        """Expose raw GATT diagnostics for the provisional light value."""
-        if self.entity_description.key != "light_raw":
+        """Expose Yealink light decoding diagnostics."""
+        if self.entity_description.key not in {"illuminance", "light_raw"}:
             return None
-        raw_hex = self.coordinator.data.light_raw_hex
+
+        data = self.coordinator.data
+        raw_hex = data.light_raw_hex
         raw_uint = (
             int.from_bytes(bytes.fromhex(raw_hex), "little", signed=False)
             if raw_hex
             else None
         )
-        return {
+        attrs = {
             "raw_hex": raw_hex,
             "raw_uint": raw_uint,
+            "encoding": data.light_encoding,
+            "status_byte": data.light_status,
             "gatt_characteristic": "0x2A77",
-            "measurement": "Yealink proprietary light payload",
-            "valid_brightness_measurement": False,
-            "note": (
-                "The tested RoomSensor returns a four-byte proprietary payload. "
-                "00000000 is treated as unavailable and must not be interpreted "
-                "as 0 lux."
+            "decoding_basis": (
+                "Yealink legacy payload: first 3 bytes uint24, 0.01 lx; "
+                "4th byte retained as vendor status"
             ),
+            "all_zero_is_unavailable": True,
         }
+        if self.entity_description.key == "illuminance":
+            attrs["valid_range_inferred_max_lux"] = 134871.05
+        return attrs
