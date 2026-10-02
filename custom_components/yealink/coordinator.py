@@ -6,11 +6,11 @@ import asyncio
 from collections.abc import Callable
 from dataclasses import replace
 import logging
+from pathlib import Path
 from typing import Any
 
 from bleak import BleakClient
 from bleak.backends.characteristic import BleakGATTCharacteristic
-from bleak_retry_connector import BleakClientWithServiceCache, establish_connection
 from homeassistant.components import bluetooth
 from homeassistant.components.bluetooth.active_update_coordinator import (
     ActiveBluetoothDataUpdateCoordinator,
@@ -34,6 +34,40 @@ from .profiles.roomsensor import (
     decode_measurement,
     decode_text,
 )
+
+
+def _find_usb_bluetooth_adapter() -> str | None:
+    """Return the external USB Bluetooth HCI adapter.
+
+    The integrated Raspberry Pi controller is connected through UART, while
+    external dongles are exposed below the USB bus with the btusb driver.
+    Selecting by bus/driver instead of a fixed hci number keeps this stable
+    across reboots where BlueZ may renumber adapters.
+    """
+    root = Path("/sys/class/bluetooth")
+    if not root.exists():
+        return None
+
+    for hci in sorted(root.glob("hci*")):
+        real = hci.resolve()
+        node = real
+        usb_backed = False
+        while node != node.parent:
+            if (node / "idVendor").exists() and (node / "idProduct").exists():
+                usb_backed = True
+                break
+            node = node.parent
+        if not usb_backed:
+            continue
+
+        try:
+            driver = (hci / "device" / "driver").resolve().name
+        except (OSError, RuntimeError):
+            driver = None
+        if driver == "btusb":
+            return hci.name
+
+    return None
 
 
 class RoomSensorCoordinator(
@@ -190,49 +224,28 @@ class RoomSensorCoordinator(
         self,
         service_info: bluetooth.BluetoothServiceInfoBleak | None,
     ) -> None:
-        """Open a managed BLE connection and subscribe to updates."""
-        # Prefer Home Assistant's managed connectable target when available.
-        # Yealink RoomSensors are, however, sometimes advertised by BlueZ/HA as
-        # non-connectable even though a direct GATT connection by address works.
-        # In that case fall back to BleakClient(address), which has been verified
-        # against the physical RoomSensor hardware.
-        target = bluetooth.async_ble_device_from_address(
-            self.hass,
-            self._address,
-            connectable=True,
+        """Connect through the dedicated external USB Bluetooth adapter."""
+        adapter = await self.hass.async_add_executor_job(
+            _find_usb_bluetooth_adapter
         )
-        if target is None and service_info is not None and service_info.connectable:
-            target = service_info.device
-
-        if target is not None:
-            try:
-                client = await establish_connection(
-                    BleakClientWithServiceCache,
-                    target,
-                    target.name or f"Yealink RoomSensor {self._address}",
-                    disconnected_callback=self._on_disconnect,
-                    max_attempts=3,
-                )
-            except Exception:
-                self.logger.debug(
-                    "%s: managed HA Bluetooth connection failed; "
-                    "falling back to direct address connection",
-                    self._address,
-                    exc_info=True,
-                )
-                client = BleakClient(
-                    self._address,
-                    disconnected_callback=self._on_disconnect,
-                    timeout=15.0,
-                )
-                await client.connect()
-        else:
-            client = BleakClient(
-                self._address,
-                disconnected_callback=self._on_disconnect,
-                timeout=15.0,
+        if adapter is None:
+            raise RuntimeError(
+                "No external USB Bluetooth adapter (btusb) available for "
+                f"Yealink RoomSensor {self._address}"
             )
-            await client.connect()
+
+        self.logger.debug(
+            "%s: connecting Yealink RoomSensor through dedicated adapter %s",
+            self._address,
+            adapter,
+        )
+        client = BleakClient(
+            self._address,
+            disconnected_callback=self._on_disconnect,
+            timeout=15.0,
+            bluez={"adapter": adapter},
+        )
+        await client.connect()
 
         try:
             self._client = client
