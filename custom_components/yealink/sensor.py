@@ -15,9 +15,11 @@ from homeassistant.components.sensor import (
 from homeassistant.const import (
     PERCENTAGE,
     SIGNAL_STRENGTH_DECIBELS_MILLIWATT,
+    EntityCategory,
     UnitOfTemperature,
 )
 from homeassistant.core import HomeAssistant
+from homeassistant.helpers.entity import EntityCategory
 from homeassistant.helpers.entity_platform import AddConfigEntryEntitiesCallback
 from homeassistant.helpers.typing import StateType
 
@@ -58,6 +60,8 @@ SENSORS: tuple[YealinkSensorDescription, ...] = (
         key="light_raw",
         translation_key="light_raw",
         state_class=SensorStateClass.MEASUREMENT,
+        entity_category=EntityCategory.DIAGNOSTIC,
+        entity_registry_enabled_default=False,
         value_fn=lambda data: data.light_raw,
     ),
     YealinkSensorDescription(
@@ -122,9 +126,21 @@ class YealinkRoomSensorSensor(YealinkRoomSensorEntity, SensorEntity):
         """Expose raw GATT diagnostics for the provisional light value."""
         if self.entity_description.key != "light_raw":
             return None
+        raw_hex = self.coordinator.data.light_raw_hex
+        raw_uint = (
+            int.from_bytes(bytes.fromhex(raw_hex), "little", signed=False)
+            if raw_hex
+            else None
+        )
         return {
-            "raw_hex": self.coordinator.data.light_raw_hex,
+            "raw_hex": raw_hex,
+            "raw_uint": raw_uint,
             "gatt_characteristic": "0x2A77",
-            "measurement": "Irradiance",
-            "note": "Raw Yealink value; lux conversion is not yet confirmed",
+            "measurement": "Yealink proprietary light payload",
+            "valid_brightness_measurement": False,
+            "note": (
+                "The tested RoomSensor returns a four-byte proprietary payload. "
+                "00000000 is treated as unavailable and must not be interpreted "
+                "as 0 lux."
+            ),
         }
