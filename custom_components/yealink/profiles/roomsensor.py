@@ -60,10 +60,29 @@ def decode_measurement(
         )
 
     if uuid == UUID_IRRADIANCE:
+        raw = int.from_bytes(value, "little", signed=False)
+
+        if len(value) == 2:
+            # Bluetooth SIG 0x2A77 Irradiance is uint16 with 0.1 W/m²
+            # resolution. This is radiant power, not illuminance/lux.
+            return replace(
+                current,
+                light_raw=raw,
+                light_raw_hex=value.hex(),
+                light_encoding="bluetooth_irradiance_uint16",
+                irradiance_w_m2=raw / 10.0,
+            )
+
+        # Physical Yealink RoomSensors return a proprietary 4-byte payload
+        # on 0x2A77. Across multiple sensors and different lighting
+        # conditions this currently remains 00000000, so it must not be
+        # exposed as Lux or as a quantitative brightness measurement.
         return replace(
             current,
-            light_raw=int.from_bytes(value, "little", signed=False),
+            light_raw=raw if raw != 0 else None,
             light_raw_hex=value.hex(),
+            light_encoding=f"yealink_proprietary_{len(value)}byte",
+            irradiance_w_m2=None,
         )
 
     if uuid == UUID_BATTERY and value:
