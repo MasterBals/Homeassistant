@@ -32,13 +32,16 @@
         "name": "Humidity"
       },
       "light_raw": {
-        "name": "Light value"
+        "name": "Light raw value (diagnostic)"
       },
       "battery": {
         "name": "Battery"
       },
       "signal_strength": {
         "name": "Signal strength"
+      },
+      "illuminance": {
+        "name": "Illuminance"
       }
     },
     "binary_sensor": {
