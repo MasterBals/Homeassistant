@@ -13,6 +13,8 @@ class RoomSensorData:
     humidity: float | None = None
     light_raw: int | None = None
     light_raw_hex: str | None = None
+    light_encoding: str | None = None
+    irradiance_w_m2: float | None = None
     battery: int | None = None
     occupancy: bool | None = None
     rssi: int | None = None
