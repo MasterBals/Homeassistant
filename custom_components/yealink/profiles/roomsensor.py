@@ -63,25 +63,45 @@ def decode_measurement(
         raw = int.from_bytes(value, "little", signed=False)
 
         if len(value) == 2:
-            # Bluetooth SIG 0x2A77 Irradiance is uint16 with 0.1 W/m²
-            # resolution. This is radiant power, not illuminance/lux.
+            # Bluetooth SIG 0x2A77 Irradiance is uint16 with 0.1 W/m².
+            # This is radiant power, not illuminance/lux.
             return replace(
                 current,
                 light_raw=raw,
                 light_raw_hex=value.hex(),
                 light_encoding="bluetooth_irradiance_uint16",
+                illuminance_lux=None,
+                light_status=None,
                 irradiance_w_m2=raw / 10.0,
             )
 
-        # Physical Yealink RoomSensors return a proprietary 4-byte payload
-        # on 0x2A77. Across multiple sensors and different lighting
-        # conditions this currently remains 00000000, so it must not be
-        # exposed as Lux or as a quantitative brightness measurement.
+        if len(value) >= 3:
+            # Physical Yealink RoomSensors use a non-standard payload on
+            # UUID 0x2A77. The attached Valid Range descriptor is six bytes,
+            # proving that the actual measurement component is uint24. That
+            # matches the Bluetooth Illuminance representation: uint24 with
+            # 0.01 lux resolution. Observed Yealink values are four bytes;
+            # the fourth byte is retained separately as a vendor status byte.
+            illuminance_raw = int.from_bytes(value[:3], "little", signed=False)
+            status = value[3] if len(value) >= 4 else None
+            all_zero = all(byte == 0 for byte in value)
+            return replace(
+                current,
+                light_raw=raw if not all_zero else None,
+                light_raw_hex=value.hex(),
+                light_encoding="yealink_legacy_illuminance_uint24_status",
+                illuminance_lux=None if all_zero else illuminance_raw / 100.0,
+                light_status=status,
+                irradiance_w_m2=None,
+            )
+
         return replace(
             current,
             light_raw=raw if raw != 0 else None,
             light_raw_hex=value.hex(),
             light_encoding=f"yealink_proprietary_{len(value)}byte",
+            illuminance_lux=None,
+            light_status=None,
             irradiance_w_m2=None,
         )
 
