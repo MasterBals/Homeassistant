@@ -1,10 +1,10 @@
 name: "ChatGPT Home Assistant Admin + Intelligence"
-version: "2.1.18"
+version: "2.2.0"
 slug: "chatgpt_ha_intelligence"
 description: >-
   Einheitliche ChatGPT-MCP-App für Home-Assistant-Administration,
-  Inventarisierung, lokale LAN/VLAN-Netzwerkerkennung und den offiziellen
-  OpenAI Secure MCP Tunnel.
+  Inventarisierung, persistentes Second Brain, gefiltertes MCP-Protokoll,
+  lokale LAN/VLAN-Netzwerkerkennung und den offiziellen OpenAI Secure MCP Tunnel.
 url: "https://github.com/MasterBals/Homeassistant"
 arch:
   - amd64
@@ -20,6 +20,10 @@ host_network: true
 privileged:
   - NET_RAW
 apparmor: false
+ingress: true
+ingress_port: 8099
+panel_icon: "mdi:brain"
+panel_title: "ChatGPT MCP"
 map:
   - type: homeassistant_config
     read_only: false
