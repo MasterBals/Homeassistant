@@ -41,6 +41,8 @@ COPY --from=openai_tunnel /usr/bin/tunnel-client /usr/bin/tunnel-client
 COPY --from=openai_tunnel /usr/bin/cloudflared /usr/bin/cloudflared
 
 COPY unified_mcp.py /app/unified_mcp.py
+COPY state_store.py /app/state_store.py
+COPY audit_ui.py /app/audit_ui.py
 COPY arlo_voice_listener.py /app/arlo_voice_listener.py
 COPY OPENAI_TUNNEL_CLIENT_LICENSE.txt /licenses/openai-tunnel-client-LICENSE
 COPY OPENAI_TUNNEL_CLIENT_NOTICE.txt /licenses/openai-tunnel-client-NOTICE
@@ -51,7 +53,7 @@ RUN chmod a+x /run.sh /entrypoint.sh /usr/bin/tunnel-client /usr/bin/cloudflared
 
 LABEL \
   io.hass.name="ChatGPT Home Assistant Admin + Intelligence" \
-  io.hass.description="Unified Home Assistant MCP administration, intelligence, network discovery and OpenAI Secure MCP Tunnel" \
+  io.hass.description="Unified Home Assistant MCP administration, intelligence, persistent knowledge, filtered audit protocol, network discovery and OpenAI Secure MCP Tunnel" \
   io.hass.version="${BUILD_VERSION}" \
   io.hass.type="app" \
   io.hass.arch="${BUILD_ARCH}"
