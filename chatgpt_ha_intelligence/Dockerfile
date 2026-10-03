@@ -42,6 +42,7 @@ COPY --from=openai_tunnel /usr/bin/cloudflared /usr/bin/cloudflared
 
 COPY unified_mcp.py /app/unified_mcp.py
 COPY state_store.py /app/state_store.py
+COPY migrate_second_brain.py /app/migrate_second_brain.py
 COPY audit_ui.py /app/audit_ui.py
 COPY arlo_voice_listener.py /app/arlo_voice_listener.py
 COPY OPENAI_TUNNEL_CLIENT_LICENSE.txt /licenses/openai-tunnel-client-LICENSE
