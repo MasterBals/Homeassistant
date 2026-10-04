@@ -1,10 +1,11 @@
 name: "ChatGPT Home Assistant Admin + Intelligence"
-version: "2.2.1"
+version: "2.3.0"
 slug: "chatgpt_ha_intelligence"
 description: >-
   Einheitliche ChatGPT-MCP-App für Home-Assistant-Administration,
   Inventarisierung, persistentes Second Brain, gefiltertes MCP-Protokoll,
-  lokale LAN/VLAN-Netzwerkerkennung und den offiziellen OpenAI Secure MCP Tunnel.
+  lokale LAN/VLAN-Netzwerkerkennung, den offiziellen OpenAI Secure MCP Tunnel
+  und ein abgesichertes Yealink VCM36-W USB/WLAN-Labor.
 url: "https://github.com/MasterBals/Homeassistant"
 arch:
   - amd64
@@ -17,7 +18,10 @@ homeassistant_api: true
 hassio_api: true
 hassio_role: homeassistant
 host_network: true
+usb: true
+udev: true
 privileged:
+  - NET_ADMIN
   - NET_RAW
 apparmor: false
 ingress: true
@@ -43,6 +47,17 @@ options:
   arlo_voice_enabled: true
   arlo_voice_capture_seconds: 8
   arlo_voice_recording_fallback: true
+  yealink_lab_enabled: true
+  yealink_ap_write_enabled: false
+  yealink_protocol_write_enabled: false
+  yealink_wifi_interface: "wlan0"
+  yealink_ap_ssid: "Yealink-Lab"
+  yealink_ap_passphrase: ""
+  yealink_ap_country: "CH"
+  yealink_ap_channel: 6
+  yealink_ap_address: "192.168.187.1/24"
+  yealink_ap_dhcp_start: "192.168.187.20"
+  yealink_ap_dhcp_end: "192.168.187.80"
 schema:
   auto_restart: bool
   write_enabled: bool
@@ -60,3 +75,14 @@ schema:
   arlo_voice_enabled: bool
   arlo_voice_capture_seconds: "int(4,20)"
   arlo_voice_recording_fallback: bool
+  yealink_lab_enabled: bool
+  yealink_ap_write_enabled: bool
+  yealink_protocol_write_enabled: bool
+  yealink_wifi_interface: str
+  yealink_ap_ssid: str
+  yealink_ap_passphrase: password
+  yealink_ap_country: str
+  yealink_ap_channel: "int(1,165)"
+  yealink_ap_address: str
+  yealink_ap_dhcp_start: str
+  yealink_ap_dhcp_end: str

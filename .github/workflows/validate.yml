@@ -9,7 +9,8 @@ jobs:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
         with: {python-version: '3.12'}
-      - run: python -m compileall chatgpt_ha_intelligence
+      - run: python -m compileall chatgpt_ha_intelligence ha_intelligence_bridge
+      - run: bash -n chatgpt_ha_intelligence/run_v2.sh
 
   validate:
     runs-on: ubuntu-latest

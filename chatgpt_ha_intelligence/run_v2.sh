@@ -25,6 +25,7 @@ PROXY_PID=""
 TUNNEL_PID=""
 ARLO_VOICE_PID=""
 OPTIONS_MUTATED=0
+TUNNEL_RESTARTS=0
 
 opt() {
   jq -r --arg key "$1" --arg fallback "$2" '.[$key] // $fallback' "${OPTIONS}"
@@ -32,6 +33,18 @@ opt() {
 
 cleanup() {
   set +e
+  # If the experimental Yealink AP is running, tear down only the lab-owned
+  # hostapd/dnsmasq processes and address before this container disappears.
+  if [[ -f /data/yealink_lab/state.json ]] && grep -q '"status"[[:space:]]*:[[:space:]]*"running"' /data/yealink_lab/state.json 2>/dev/null; then
+    python3 - <<'PYLAB' >/dev/null 2>&1 || true
+import json, sys
+from pathlib import Path
+sys.path.insert(0, '/opt/homeassistant-source/ha_intelligence_bridge/app')
+from yealink_lab import ap_stop
+opts = json.loads(Path('/data/options.json').read_text())
+ap_stop(opts)
+PYLAB
+  fi
   if [[ "${OPTIONS_MUTATED}" == "1" && -f "${OPTIONS_BACKUP}" ]]; then
     cp -f "${OPTIONS_BACKUP}" "${OPTIONS}"
     OPTIONS_MUTATED=0
@@ -57,23 +70,27 @@ wait_http() {
     fi
     sleep 1
   done
-  echo "ERROR: ${label} did not become ready: ${url}" >&2
+  echo "WARNING: ${label} did not become ready yet: ${url}" >&2
   return 1
 }
 
+ha_core_ready() {
+  curl -fsS --max-time 3 \
+    -H "Authorization: Bearer ${SUPERVISOR_TOKEN}" \
+    http://supervisor/core/api/ >/dev/null 2>&1
+}
+
 wait_ha_core() {
-  local tries="${1:-90}"
+  local tries="${1:-180}"
   local i
   for ((i=1; i<=tries; i++)); do
-    if curl -fsS --max-time 3 \
-      -H "Authorization: Bearer ${SUPERVISOR_TOKEN}" \
-      http://supervisor/core/api/ >/dev/null 2>&1; then
+    if ha_core_ready; then
       echo "Home Assistant Core API is ready."
       return 0
     fi
     sleep 2
   done
-  echo "ERROR: Home Assistant Core API did not become ready." >&2
+  echo "WARNING: Home Assistant Core API did not become ready within the wait window; continuing without terminating the app." >&2
   return 1
 }
 
@@ -84,13 +101,13 @@ probe_admin_mcp() {
     -H "Content-Type: application/json" \
     -H "Accept: application/json" \
     -X POST \
-    --data '{"jsonrpc":"2.0","id":"probe","method":"initialize","params":{"protocolVersion":"2026-07-28","capabilities":{},"clientInfo":{"name":"chatgpt-ha-addon-probe","version":"2.1.17"}}}' \
+    --data '{"jsonrpc":"2.0","id":"probe","method":"initialize","params":{"protocolVersion":"2026-07-28","capabilities":{},"clientInfo":{"name":"chatgpt-ha-addon-probe","version":"2.3.0"}}}' \
     http://supervisor/core/api/mcp/chatgpt_ha_admin 2>/dev/null || true)"
   [[ -n "${response}" ]] && [[ "$(printf '%s' "${response}" | jq -r '.result.protocolVersion // empty' 2>/dev/null || true)" != "" ]]
 }
 
 wait_admin_mcp() {
-  local tries="${1:-60}"
+  local tries="${1:-90}"
   local i
   for ((i=1; i<=tries; i++)); do
     if probe_admin_mcp; then
@@ -99,7 +116,46 @@ wait_admin_mcp() {
     fi
     sleep 2
   done
-  echo "WARNING: Home Assistant Admin MCP did not become ready; Intelligence tools will still start and UnifiedStatus will expose the error." >&2
+  echo "WARNING: Home Assistant Admin MCP did not become ready; Intelligence/Yealink lab tools and the tunnel will still start." >&2
+  return 1
+}
+
+write_runtime_state() {
+  local status="$1"
+  local component_sha="$2"
+  local settings_sha="$3"
+  local note="${4:-}"
+  jq -n \
+    --arg status "${status}" \
+    --arg component_sha "${component_sha}" \
+    --arg settings_sha "${settings_sha}" \
+    --arg updated_at "$(date +%Y-%m-%dT%H:%M:%S%z)" \
+    --arg note "${note}" \
+    '{status:$status,component_sha:$component_sha,settings_sha:$settings_sha,updated_at:$updated_at,note:$note}' > "${RUNTIME_STATE}.new"
+  mv "${RUNTIME_STATE}.new" "${RUNTIME_STATE}"
+}
+
+check_ha_config() {
+  local tries="${1:-36}"
+  local i check result
+  for ((i=1; i<=tries; i++)); do
+    check="$(curl -fsS --max-time 30 \
+      -H "Authorization: Bearer ${SUPERVISOR_TOKEN}" \
+      -H "Content-Type: application/json" \
+      -X POST -d '{}' \
+      http://supervisor/core/api/config/core/check_config 2>/dev/null || true)"
+    result="$(printf '%s' "${check}" | jq -r '.result // empty' 2>/dev/null || true)"
+    if [[ "${result}" == "valid" ]]; then
+      echo "Home Assistant configuration is valid."
+      return 0
+    fi
+    if [[ -n "${check}" && "${result}" != "" ]]; then
+      echo "ERROR: Home Assistant config check returned: ${check}" >&2
+      return 2
+    fi
+    sleep 5
+  done
+  echo "WARNING: Home Assistant config check could not be completed because the Core API stayed unavailable; this will not terminate the app." >&2
   return 1
 }
 
@@ -110,7 +166,6 @@ ALLOW_SERVICE_CALLS="$(opt allow_service_calls true)"
 ALLOW_SENSITIVE_FILES="$(opt allow_sensitive_files false)"
 REQUIRE_HASH="$(opt require_hash_for_writes true)"
 MAX_READ_BYTES="$(opt max_read_bytes 2000000)"
-AUTO_RESTART="$(opt auto_restart false)"
 LOG_LEVEL="$(opt log_level INFO)"
 ARLO_VOICE_ENABLED="$(opt arlo_voice_enabled true)"
 ARLO_VOICE_CAPTURE_SECONDS="$(opt arlo_voice_capture_seconds 8)"
@@ -131,13 +186,12 @@ JSON
 
 SETTINGS_SHA="$(sha256sum "${SETTINGS_TMP}" | awk '{print $1}')"
 COMPONENT_SHA="$(find "${SRC}" -type f -print | LC_ALL=C sort | while IFS= read -r file; do sha256sum "${file}"; done | sha256sum | awk '{print $1}')"
-LOADED_SETTINGS_SHA="$(jq -r '.settings_sha // ""' "${RUNTIME_STATE}" 2>/dev/null || true)"
-LOADED_COMPONENT_SHA="$(jq -r '.component_sha // ""' "${RUNTIME_STATE}" 2>/dev/null || true)"
+STATE_STATUS="$(jq -r '.status // ""' "${RUNTIME_STATE}" 2>/dev/null || true)"
+STATE_SETTINGS_SHA="$(jq -r '.settings_sha // ""' "${RUNTIME_STATE}" 2>/dev/null || true)"
+STATE_COMPONENT_SHA="$(jq -r '.component_sha // ""' "${RUNTIME_STATE}" 2>/dev/null || true)"
 
-if [[ -f "${STATE_DIR}/settings.json" ]]; then
-  if ! cmp -s "${STATE_DIR}/settings.json" "${SETTINGS_TMP}"; then
-    cp -a "${STATE_DIR}/settings.json" "${BACKUP_DIR}/settings_${STAMP}.json"
-  fi
+if [[ -f "${STATE_DIR}/settings.json" ]] && ! cmp -s "${STATE_DIR}/settings.json" "${SETTINGS_TMP}"; then
+  cp -a "${STATE_DIR}/settings.json" "${BACKUP_DIR}/settings_${STAMP}.json"
 fi
 mv "${SETTINGS_TMP}" "${STATE_DIR}/settings.json"
 
@@ -169,15 +223,9 @@ YAML
   CFG_CHANGED=1
 fi
 
-CHECK="$(curl -fsS --max-time 120 \
-  -H "Authorization: Bearer ${SUPERVISOR_TOKEN}" \
-  -H "Content-Type: application/json" \
-  -X POST -d '{}' \
-  http://supervisor/core/api/config/core/check_config || true)"
-RESULT="$(printf '%s' "${CHECK}" | jq -r '.result // empty' 2>/dev/null || true)"
-
-if [[ "${RESULT}" != "valid" ]]; then
-  echo "ERROR: Home Assistant config check failed: ${CHECK}" >&2
+CONFIG_CHECK_STATUS=0
+check_ha_config 36 || CONFIG_CHECK_STATUS=$?
+if [[ "${CONFIG_CHECK_STATUS}" == "2" ]]; then
   if [[ "${CFG_CHANGED}" == "1" && -f "${BACKUP_DIR}/configuration_${STAMP}.yaml" ]]; then
     cp -a "${BACKUP_DIR}/configuration_${STAMP}.yaml" "${CFG}"
   fi
@@ -188,36 +236,45 @@ if [[ "${RESULT}" != "valid" ]]; then
   exit 1
 fi
 
-echo "ChatGPT Home Assistant Admin integration installed and config validated."
+echo "ChatGPT Home Assistant Admin integration staged."
 
 RESTART_REQUIRED=0
 if [[ "${COMPONENT_CHANGED}" == "1" || "${CFG_CHANGED}" == "1" ]]; then
   RESTART_REQUIRED=1
 fi
-if [[ "${LOADED_COMPONENT_SHA}" != "${COMPONENT_SHA}" || "${LOADED_SETTINGS_SHA}" != "${SETTINGS_SHA}" ]]; then
-  RESTART_REQUIRED=1
-fi
-if [[ "${AUTO_RESTART}" == "true" ]]; then
+if [[ "${STATE_COMPONENT_SHA}" != "${COMPONENT_SHA}" || "${STATE_SETTINGS_SHA}" != "${SETTINGS_SHA}" ]]; then
   RESTART_REQUIRED=1
 fi
 
-if [[ "${RESTART_REQUIRED}" == "1" ]]; then
-  echo "Restarting Home Assistant Core once to load the current Admin MCP integration/settings..."
+SAME_PENDING=0
+if [[ "${STATE_STATUS}" == "restart_pending" && "${STATE_COMPONENT_SHA}" == "${COMPONENT_SHA}" && "${STATE_SETTINGS_SHA}" == "${SETTINGS_SHA}" ]]; then
+  SAME_PENDING=1
+fi
+
+if [[ "${RESTART_REQUIRED}" == "1" && "${SAME_PENDING}" == "0" ]]; then
+  # Persist the desired hashes BEFORE asking Core to restart. If this app is interrupted
+  # during the Core restart, the next container start sees restart_pending and will not
+  # trigger a second restart for the same payload.
+  write_runtime_state "restart_pending" "${COMPONENT_SHA}" "${SETTINGS_SHA}" "Core restart requested once for this payload"
+  echo "Requesting one Home Assistant Core restart for the new Admin MCP payload/settings..."
   curl -fsS --max-time 5 \
     -H "Authorization: Bearer ${SUPERVISOR_TOKEN}" \
     -H "Content-Type: application/json" \
     -X POST -d '{}' \
     http://supervisor/core/api/services/homeassistant/restart >/dev/null 2>&1 || true
-  wait_ha_core 120
-  sleep 3
-  jq -n \
-    --arg component_sha "${COMPONENT_SHA}" \
-    --arg settings_sha "${SETTINGS_SHA}" \
-    --arg updated_at "$(date +%Y-%m-%dT%H:%M:%S%z)" \
-    '{component_sha:$component_sha,settings_sha:$settings_sha,updated_at:$updated_at}' > "${RUNTIME_STATE}"
+  wait_ha_core 180 || true
+elif [[ "${SAME_PENDING}" == "1" ]]; then
+  echo "A Core restart was already requested for this exact Admin MCP payload; not restarting Core again."
+  wait_ha_core 180 || true
 fi
 
-wait_admin_mcp 60 || true
+if wait_admin_mcp 90; then
+  write_runtime_state "loaded" "${COMPONENT_SHA}" "${SETTINGS_SHA}" "Admin MCP probe succeeded"
+else
+  if [[ "${RESTART_REQUIRED}" == "0" && "${SAME_PENDING}" == "0" ]]; then
+    write_runtime_state "degraded" "${COMPONENT_SHA}" "${SETTINGS_SHA}" "Admin MCP unavailable; app kept running"
+  fi
+fi
 
 umask 077
 if [[ ! -s "${INTERNAL_TOKEN_FILE}" ]]; then
@@ -242,10 +299,10 @@ jq \
   "${OPTIONS_BACKUP}" > "${OPTIONS}.new"
 mv "${OPTIONS}.new" "${OPTIONS}"
 
-echo "Starting private Intelligence MCP on 127.0.0.1:${BRIDGE_PORT}..."
-python3 -u /opt/homeassistant-source/ha_intelligence_bridge/app/main.py &
+echo "Starting private Intelligence + Yealink Lab MCP on 127.0.0.1:${BRIDGE_PORT}..."
+python3 -u /opt/homeassistant-source/ha_intelligence_bridge/app/main_yealink.py &
 BRIDGE_PID=$!
-wait_http "http://127.0.0.1:${BRIDGE_PORT}/health" "Intelligence MCP" 60
+wait_http "http://127.0.0.1:${BRIDGE_PORT}/health" "Intelligence MCP" 60 || exit 1
 
 cp -f "${OPTIONS_BACKUP}" "${OPTIONS}"
 OPTIONS_MUTATED=0
@@ -261,52 +318,72 @@ export LOG_LEVEL="${LOG_LEVEL}"
 echo "Starting unified Admin + Intelligence MCP on 127.0.0.1:${UNIFIED_PORT}..."
 python3 -u /app/unified_mcp.py &
 PROXY_PID=$!
-wait_http "http://127.0.0.1:${UNIFIED_PORT}/health" "Unified MCP" 60
+wait_http "http://127.0.0.1:${UNIFIED_PORT}/health" "Unified MCP" 60 || exit 1
 
-if [[ "${ARLO_VOICE_ENABLED}" == "true" ]]; then
+start_arlo_voice() {
+  if [[ "${ARLO_VOICE_ENABLED}" != "true" ]]; then
+    ARLO_VOICE_PID=""
+    return 0
+  fi
   export ARLO_VOICE_CAPTURE_SECONDS
   export ARLO_VOICE_RECORDING_FALLBACK
   echo "Starting Arlo camera voice listener..."
   python3 -u /app/arlo_voice_listener.py &
   ARLO_VOICE_PID=$!
-else
-  echo "Arlo camera voice listener is disabled."
-fi
+}
 
-if [[ -n "${TUNNEL_ID}" || -n "${RUNTIME_API_KEY}" ]]; then
+start_tunnel() {
+  if [[ -z "${TUNNEL_ID}" && -z "${RUNTIME_API_KEY}" ]]; then
+    TUNNEL_PID=""
+    echo "OpenAI tunnel is not configured yet."
+    return 0
+  fi
   if [[ -z "${TUNNEL_ID}" || -z "${RUNTIME_API_KEY}" ]]; then
     echo "ERROR: tunnel_id and runtime_api_key must either both be configured or both be empty." >&2
-    exit 1
+    return 1
   fi
   if [[ ! "${TUNNEL_ID}" =~ ^tunnel_[0-9a-f]{32}$ ]]; then
     echo "ERROR: tunnel_id must match tunnel_ followed by 32 lowercase hexadecimal characters." >&2
-    exit 1
+    return 1
   fi
-
   export CONTROL_PLANE_TUNNEL_ID="${TUNNEL_ID}"
   export CONTROL_PLANE_API_KEY="${RUNTIME_API_KEY}"
   export MCP_SERVER_URL="http://127.0.0.1:${UNIFIED_PORT}/mcp"
-
   echo "Starting official OpenAI Secure MCP Tunnel for ${TUNNEL_ID}..."
   /usr/local/bin/tunnel-client-runtime run &
   TUNNEL_PID=$!
   echo "OpenAI tunnel client started. No inbound router port is required."
-else
-  echo "OpenAI tunnel is not configured yet."
-  echo "Set tunnel_id and runtime_api_key in the app configuration, then restart this app."
-fi
+}
 
-set +e
-WAIT_PIDS=("${BRIDGE_PID}" "${PROXY_PID}")
-if [[ -n "${ARLO_VOICE_PID}" ]]; then
-  WAIT_PIDS+=("${ARLO_VOICE_PID}")
-fi
-if [[ -n "${TUNNEL_PID}" ]]; then
-  WAIT_PIDS+=("${TUNNEL_PID}")
-fi
-wait -n "${WAIT_PIDS[@]}"
-STATUS=$?
-set -e
+start_arlo_voice
+start_tunnel || true
 
-echo "ERROR: One of the managed MCP/tunnel processes exited unexpectedly with status ${STATUS}." >&2
-exit "${STATUS}"
+# Keep the app alive even if the external tunnel temporarily exits. The previous
+# implementation used wait -n and terminated the whole app whenever the tunnel
+# disconnected, which amplified Core restarts into an add-on restart loop.
+while true; do
+  if ! kill -0 "${BRIDGE_PID}" 2>/dev/null; then
+    echo "ERROR: Intelligence bridge exited; restarting the app so Supervisor can recover it." >&2
+    exit 1
+  fi
+  if ! kill -0 "${PROXY_PID}" 2>/dev/null; then
+    echo "ERROR: Unified MCP proxy exited; restarting the app so Supervisor can recover it." >&2
+    exit 1
+  fi
+
+  if [[ "${ARLO_VOICE_ENABLED}" == "true" ]] && { [[ -z "${ARLO_VOICE_PID}" ]] || ! kill -0 "${ARLO_VOICE_PID}" 2>/dev/null; }; then
+    echo "WARNING: Arlo voice listener exited; restarting it without stopping MCP." >&2
+    start_arlo_voice
+  fi
+
+  if [[ -n "${TUNNEL_ID}" && -n "${RUNTIME_API_KEY}" ]] && { [[ -z "${TUNNEL_PID}" ]] || ! kill -0 "${TUNNEL_PID}" 2>/dev/null; }; then
+    TUNNEL_RESTARTS=$((TUNNEL_RESTARTS + 1))
+    BACKOFF=$((TUNNEL_RESTARTS * 5))
+    if (( BACKOFF > 60 )); then BACKOFF=60; fi
+    echo "WARNING: OpenAI tunnel exited; retrying in ${BACKOFF}s without terminating the app." >&2
+    sleep "${BACKOFF}"
+    start_tunnel || true
+  fi
+
+  sleep 5
+done

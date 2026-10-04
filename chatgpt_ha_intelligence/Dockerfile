@@ -22,7 +22,13 @@ RUN apk add --no-cache \
     netcat-openbsd \
     arp-scan \
     ffmpeg \
-    bluez
+    bluez \
+    hostapd \
+    dnsmasq \
+    iw \
+    usbutils \
+    libusb \
+    tcpdump
 
 RUN echo "Bundling Homeassistant source for ${BUILD_VERSION}" \
     && git clone --depth 1 --branch main https://github.com/MasterBals/Homeassistant.git /opt/homeassistant-source
@@ -32,7 +38,8 @@ RUN pip3 install --no-cache-dir \
     "httpx>=0.28,<1" \
     "websockets>=15,<16" \
     "PyYAML>=6.0.2,<7" \
-    "uvicorn>=0.35,<1"
+    "uvicorn>=0.35,<1" \
+    "pyusb>=1.3,<2"
 
 WORKDIR /app
 
@@ -54,7 +61,7 @@ RUN chmod a+x /run.sh /entrypoint.sh /usr/bin/tunnel-client /usr/bin/cloudflared
 
 LABEL \
   io.hass.name="ChatGPT Home Assistant Admin + Intelligence" \
-  io.hass.description="Unified Home Assistant MCP administration, intelligence, persistent knowledge, filtered audit protocol, network discovery and OpenAI Secure MCP Tunnel" \
+  io.hass.description="Unified Home Assistant MCP administration, intelligence, persistent knowledge, Yealink VCM36-W lab, filtered audit protocol, network discovery and OpenAI Secure MCP Tunnel" \
   io.hass.version="${BUILD_VERSION}" \
   io.hass.type="app" \
   io.hass.arch="${BUILD_ARCH}"
