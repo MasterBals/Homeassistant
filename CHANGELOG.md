@@ -1,5 +1,14 @@
 # Changelog
 
+## 2.3.0
+
+- Fix the ChatGPT MCP add-on Core-restart loop by persisting a `restart_pending` marker before requesting a Home Assistant Core restart.
+- Treat temporary Home Assistant API/Admin MCP startup timeouts as degraded states instead of terminating the whole add-on.
+- Restart the OpenAI Secure MCP tunnel with bounded backoff instead of exiting the add-on when the tunnel disconnects.
+- Add a guarded Yealink VCM36-W lab with raw USB/udev access, `libusb`/`pyusb`, Wi-Fi AP tooling (`hostapd`, `dnsmasq`, `iw`) and passive packet capture support.
+- Add MCP tools for Yealink readiness, USB inventory, AP preview/start/stop and packet capture. AP writes and future RC8/pairing writes are disabled by default.
+- Add isolated default Yealink lab subnet `192.168.187.0/24` with overlap and active-interface safety checks and no NAT/Internet forwarding.
+
 ## 1.1.0
 
 - Add the Chur Kultur custom integration for filtered events from chur-kultur.ch.
