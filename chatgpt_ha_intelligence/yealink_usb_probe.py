@@ -1,7 +1,9 @@
 from __future__ import annotations
 
+import hashlib
 import json
 import os
+import selectors
 import signal
 import time
 from pathlib import Path
@@ -25,7 +27,10 @@ PIDS = {
 SYSFS = Path("/sys/bus/usb/devices")
 OUT = Path("/homeassistant/yealink_vcm36w_usb_probe.json")
 INTERVAL = 5
+PASSIVE_CAPTURE_SECONDS = 4.0
+PASSIVE_MAX_FRAMES = 64
 RUNNING = True
+RECENT_FRAMES: dict[str, dict[str, Any]] = {}
 
 
 def _read_text(path: Path) -> str | None:
@@ -49,29 +54,6 @@ def _to_int(value: str | None, base: int = 10) -> int | None:
         return int(value, base)
     except (TypeError, ValueError):
         return None
-
-
-def _hidraw_for(device_dir: Path) -> list[dict[str, Any]]:
-    result: list[dict[str, Any]] = []
-    for interface in sorted(device_dir.parent.glob(f"{device_dir.name}:*")):
-        if (_read_text(interface / "bInterfaceClass") or "").lower() != "03":
-            continue
-        interface_number = _to_int(_read_text(interface / "bInterfaceNumber"), 16)
-        for path in sorted(interface.rglob("hidraw*")):
-            if not path.name.startswith("hidraw"):
-                continue
-            dev_path = Path("/dev") / path.name
-            report_descriptor = _hid_report_descriptor(path.name)
-            result.append(
-                {
-                    "hidraw": str(dev_path),
-                    "interface_number": interface_number,
-                    "report_descriptor_size": len(report_descriptor) if report_descriptor is not None else None,
-                    "report_descriptor_hex": report_descriptor.hex() if report_descriptor is not None else None,
-                    "report_ids": _report_ids(report_descriptor or b""),
-                }
-            )
-    return result
 
 
 def _hid_report_descriptor(hidraw_name: str) -> bytes | None:
@@ -115,6 +97,33 @@ def _report_ids(desc: bytes) -> list[int]:
             if rid not in ids:
                 ids.append(rid)
     return ids
+
+
+def _hidraw_for(device_dir: Path) -> list[dict[str, Any]]:
+    result: list[dict[str, Any]] = []
+    seen: set[str] = set()
+    for interface in sorted(device_dir.parent.glob(f"{device_dir.name}:*")):
+        if (_read_text(interface / "bInterfaceClass") or "").lower() != "03":
+            continue
+        interface_number = _to_int(_read_text(interface / "bInterfaceNumber"), 16)
+        for path in sorted(interface.rglob("hidraw*")):
+            if not path.name.startswith("hidraw") or not path.name[6:].isdigit():
+                continue
+            dev_path = str(Path("/dev") / path.name)
+            if dev_path in seen:
+                continue
+            seen.add(dev_path)
+            report_descriptor = _hid_report_descriptor(path.name)
+            result.append(
+                {
+                    "hidraw": dev_path,
+                    "interface_number": interface_number,
+                    "report_descriptor_size": len(report_descriptor) if report_descriptor is not None else None,
+                    "report_descriptor_hex": report_descriptor.hex() if report_descriptor is not None else None,
+                    "report_ids": _report_ids(report_descriptor or b""),
+                }
+            )
+    return result
 
 
 def _interfaces(device_dir: Path) -> list[dict[str, Any]]:
@@ -202,6 +211,108 @@ def _feature_reports(bus: int | None, address: int | None, hidraw: list[dict[str
     return {"available": True, "interfaces": output}
 
 
+def _remember_frame(path: str, raw: bytes) -> None:
+    digest = hashlib.sha256(raw).hexdigest()[:16]
+    key = f"{path}:{digest}"
+    now = int(time.time())
+    existing = RECENT_FRAMES.get(key)
+    if existing:
+        existing["last_seen"] = now
+        existing["count"] = int(existing.get("count", 1)) + 1
+        return
+    RECENT_FRAMES[key] = {
+        "hidraw": path,
+        "sha256_16": digest,
+        "first_seen": now,
+        "last_seen": now,
+        "count": 1,
+        "length": len(raw),
+        "report_id": raw[0] if raw else None,
+        "hex": raw.hex(),
+    }
+    while len(RECENT_FRAMES) > PASSIVE_MAX_FRAMES:
+        oldest = min(RECENT_FRAMES, key=lambda item: int(RECENT_FRAMES[item].get("last_seen", 0)))
+        RECENT_FRAMES.pop(oldest, None)
+
+
+def _vendor_hidraw_paths(devices: list[dict[str, Any]]) -> list[str]:
+    paths: list[str] = []
+    for device in devices:
+        for info in device.get("hid") or []:
+            path = str(info.get("hidraw") or "")
+            report_ids = [int(x) for x in (info.get("report_ids") or [])]
+            if path and 0xC8 in report_ids and Path(path).exists() and path not in paths:
+                paths.append(path)
+    return paths
+
+
+def _passive_hidraw_capture(devices: list[dict[str, Any]], seconds: float = PASSIVE_CAPTURE_SECONDS) -> dict[str, Any]:
+    """Listen passively for input reports from the vendor hidraw channel.
+
+    The file descriptors are opened O_RDONLY|O_NONBLOCK. This function never writes,
+    never calls HIDIOCSFEATURE/SET_REPORT and never detaches the usbhid kernel driver.
+    """
+    paths = _vendor_hidraw_paths(devices)
+    errors: list[dict[str, str]] = []
+    if not paths:
+        return {"capture_seconds": seconds, "paths": [], "frames_seen": 0, "errors": [], "recent_frames": list(RECENT_FRAMES.values())}
+
+    selector = selectors.DefaultSelector()
+    opened: list[int] = []
+    read_count = 0
+    try:
+        for path in paths:
+            try:
+                flags = os.O_RDONLY | os.O_NONBLOCK
+                if hasattr(os, "O_CLOEXEC"):
+                    flags |= os.O_CLOEXEC
+                fd = os.open(path, flags)
+                opened.append(fd)
+                selector.register(fd, selectors.EVENT_READ, data=path)
+            except OSError as exc:
+                errors.append({"hidraw": path, "error": f"{type(exc).__name__}: {exc}"})
+
+        deadline = time.monotonic() + max(0.1, float(seconds))
+        while RUNNING and time.monotonic() < deadline and selector.get_map():
+            timeout = min(0.25, max(0.0, deadline - time.monotonic()))
+            for key, _mask in selector.select(timeout):
+                fd = int(key.fd)
+                path = str(key.data)
+                while True:
+                    try:
+                        raw = os.read(fd, 4096)
+                    except BlockingIOError:
+                        break
+                    except OSError as exc:
+                        errors.append({"hidraw": path, "error": f"{type(exc).__name__}: {exc}"})
+                        try:
+                            selector.unregister(fd)
+                        except Exception:
+                            pass
+                        break
+                    if not raw:
+                        break
+                    read_count += 1
+                    _remember_frame(path, raw)
+    finally:
+        selector.close()
+        for fd in opened:
+            try:
+                os.close(fd)
+            except OSError:
+                pass
+
+    recent = sorted(RECENT_FRAMES.values(), key=lambda item: int(item.get("last_seen", 0)), reverse=True)
+    return {
+        "capture_seconds": seconds,
+        "paths": paths,
+        "frames_seen_this_cycle": read_count,
+        "errors": errors[-20:],
+        "recent_frames": recent,
+        "write_operations_performed": False,
+    }
+
+
 def _find_devices() -> list[dict[str, Any]]:
     if not SYSFS.exists():
         return []
@@ -246,8 +357,9 @@ def _find_devices() -> list[dict[str, Any]]:
 
 def probe() -> dict[str, Any]:
     devices = _find_devices()
+    passive = _passive_hidraw_capture(devices)
     return {
-        "schema": 1,
+        "schema": 2,
         "captured_at": int(time.time()),
         "mode": "read_only",
         "writes_performed": False,
@@ -255,9 +367,11 @@ def probe() -> dict[str, Any]:
         "expected_pids": {f"{pid:04x}": name for pid, name in PIDS.items()},
         "device_count": len(devices),
         "devices": devices,
+        "passive_hidraw": passive,
         "notes": [
-            "Only USB descriptors and HID GET_REPORT requests are used.",
-            "No HID SET_REPORT, firmware write or pairing command is issued by this probe.",
+            "Only USB descriptors, HID GET_REPORT requests and passive O_RDONLY hidraw reads are used.",
+            "No hidraw write, HID SET_REPORT, firmware write, driver detach or pairing command is issued by this probe.",
+            "Vendor report ID 0xC8 is captured passively when the microphone emits an input report.",
         ],
     }
 
@@ -279,24 +393,28 @@ def main() -> None:
     signal.signal(signal.SIGTERM, _stop)
     signal.signal(signal.SIGINT, _stop)
     while RUNNING:
+        cycle_started = time.monotonic()
         try:
             _write(probe())
         except Exception as exc:
             try:
                 _write(
                     {
-                        "schema": 1,
+                        "schema": 2,
                         "captured_at": int(time.time()),
                         "mode": "read_only",
                         "writes_performed": False,
                         "device_count": 0,
                         "devices": [],
+                        "passive_hidraw": {"recent_frames": list(RECENT_FRAMES.values()), "error": f"{type(exc).__name__}: {exc}"},
                         "error": f"{type(exc).__name__}: {exc}",
                     }
                 )
             except Exception:
                 pass
-        for _ in range(INTERVAL * 10):
+        elapsed = time.monotonic() - cycle_started
+        remaining = max(0.0, INTERVAL - elapsed)
+        for _ in range(int(remaining * 10)):
             if not RUNNING:
                 break
             time.sleep(0.1)
