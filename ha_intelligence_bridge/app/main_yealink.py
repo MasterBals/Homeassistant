@@ -2,11 +2,13 @@ from __future__ import annotations
 
 import main as base
 from yealink_lab import register_yealink_tools
+from yealink_wifi_profile import register_target_wifi_tools
 
 # Keep the stable Home Assistant inventory/network bridge intact and extend it with
 # opt-in Yealink lab tools. This wrapper avoids invasive changes to the proven bridge.
-base.VERSION = '0.3.0'
+base.VERSION = '0.4.0'
 register_yealink_tools(base.mcp, base.OPT)
+register_target_wifi_tools(base.mcp, base.OPT)
 
 if __name__ == '__main__':
     base.uvicorn.run(
