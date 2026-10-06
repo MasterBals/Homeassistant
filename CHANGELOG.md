@@ -1,5 +1,20 @@
 # Changelog
 
+## 2.4.4
+
+- Correct the VCM36-W USB vendor ID used by the Yealink lab from the erroneous `1b51` value to the actual Yealink VID `6993` reported by Home Assistant USB discovery and the physical microphone.
+- Add a continuous read-only VCM36-W USB/HID probe that records USB interfaces, endpoints, HID report descriptors and declared report IDs.
+- Probe supported HID input/feature reports only with `GET_REPORT`; no `SET_REPORT`, WLAN change, firmware write or pairing command is sent.
+- Store the private diagnostic snapshot at `/config/yealink_vcm36w_usb_probe.json` so pairing reverse engineering can continue through the existing Admin MCP without exposing a new public write tool.
+- Bump the extended Intelligence bridge wrapper to 0.4.3.
+
+## 2.4.3
+
+- Add enhanced network correlation using exact device-registry and entity-state network identities, encoded IPv4 addresses, MAC addresses and Sonos RINCON identifiers.
+- Recognise the Home Assistant host itself and keep heuristic device identification separate from confirmed Home Assistant matches.
+- Add conservative candidate/family classifications for devices such as NVIDIA Shield, Apple/AirPlay, Logitech Harmony, Arlo, Sonos and Tuya without converting uncertain matches into confirmed devices.
+- Bump the extended Intelligence bridge wrapper to 0.4.2.
+
 ## 2.4.2
 
 - Exclude Home Assistant Supervisor/container routes from automatic private-network scan targets so `targets: null` selects the real LAN instead of exceeding `max_scan_hosts` on internal `172.30.x.x` networks.
