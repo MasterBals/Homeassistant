@@ -6,7 +6,7 @@ from yealink_wifi_profile import register_target_wifi_tools
 
 # Keep the stable Home Assistant inventory/network bridge intact and extend it with
 # opt-in Yealink lab tools. This wrapper avoids invasive changes to the proven bridge.
-base.VERSION = '0.4.0'
+base.VERSION = '0.4.1'
 register_yealink_tools(base.mcp, base.OPT)
 register_target_wifi_tools(base.mcp, base.OPT)
 
