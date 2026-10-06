@@ -1,5 +1,12 @@
 # Changelog
 
+## 2.4.2
+
+- Exclude Home Assistant Supervisor/container routes from automatic private-network scan targets so `targets: null` selects the real LAN instead of exceeding `max_scan_hosts` on internal `172.30.x.x` networks.
+- Correlate discovered IPv4 addresses and MAC addresses exactly with the Home Assistant device registry instead of using substring matching, preventing false matches such as `192.168.1.1` matching `192.168.1.110`.
+- Expose the existing `network_scan_unmanaged` implementation as an MCP tool so unknown/unmatched LAN hosts can be queried directly.
+- Bump the extended Intelligence bridge wrapper to 0.4.1.
+
 ## 2.4.1
 
 - Fix the OpenAI Secure MCP Tunnel repeatedly exiting when the add-on `log_level` option is set to `INFO`, `DEBUG`, `WARNING` or `ERROR`.
