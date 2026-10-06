@@ -1,5 +1,5 @@
 from __future__ import annotations
-import asyncio, hmac, ipaddress, json, logging, os, subprocess, time, uuid
+import asyncio, hmac, ipaddress, json, logging, os, re, subprocess, time, uuid
 from collections import Counter, defaultdict
 from pathlib import Path
 from typing import Any, Literal
@@ -11,7 +11,7 @@ from starlette.requests import Request
 from starlette.responses import JSONResponse
 from xml.etree import ElementTree as ET
 
-VERSION='0.2.0'
+VERSION='0.2.1'
 OPT=json.loads(Path('/data/options.json').read_text())
 TOKEN=str(OPT.get('mcp_token','')).strip()
 if not TOKEN or TOKEN=='CHANGE_ME_BEFORE_STARTING':
@@ -25,6 +25,7 @@ HA_TOKEN=os.environ.get('SUPERVISOR_TOKEN','')
 HEAD={'Authorization':f'Bearer {HA_TOKEN}','Content-Type':'application/json'}
 HTTP=httpx.AsyncClient(headers=HEAD,timeout=httpx.Timeout(30,read=120))
 JOBS:dict[str,dict[str,Any]]={}
+HA_INTERNAL_NETWORKS=(ipaddress.ip_network('172.30.32.0/23'),ipaddress.ip_network('172.30.232.0/23'))
 logging.basicConfig(level=getattr(logging,str(OPT.get('log_level','INFO')).upper(),logging.INFO))
 
 async def ha_get(path:str):
@@ -48,6 +49,12 @@ async def ha_ws(kind:str):
                     raise RuntimeError(str(m.get('error')))
                 return m.get('result',[])
 
+def _is_internal_ha_route(n:ipaddress.IPv4Network,dev:str='')->bool:
+    d=(dev or '').lower()
+    if any(n.subnet_of(reserved) for reserved in HA_INTERNAL_NETWORKS):
+        return True
+    return d in ('hassio','docker0') or d.startswith(('veth','br-'))
+
 def auto_cidrs()->list[str]:
     try:
         out=subprocess.check_output(['ip','-j','-4','route','show','scope','link'],text=True,timeout=10)
@@ -57,7 +64,7 @@ def auto_cidrs()->list[str]:
             if dst and dst!='default':
                 try:
                     n=ipaddress.ip_network(dst,strict=False)
-                    if n.is_private:
+                    if n.is_private and not _is_internal_ha_route(n,str(r.get('dev') or '')):
                         nets.append(str(n))
                 except ValueError:
                     pass
@@ -141,6 +148,24 @@ async def registries():
             out[k]=[]
     return out
 
+def _norm_mac(value:Any)->str:
+    return re.sub(r'[^0-9a-f]','',str(value or '').lower())
+
+def _device_matches_identity(device:dict[str,Any],ip:str,mac:str)->bool:
+    blob=json.dumps(device,ensure_ascii=False).lower()
+    if ip and re.search(rf'(?<!\d){re.escape(ip)}(?!\d)',blob):
+        return True
+    if mac:
+        for conn in device.get('connections') or []:
+            if isinstance(conn,(list,tuple)) and len(conn)>=2 and _norm_mac(conn[1])==mac:
+                return True
+        if len(mac)==12:
+            colon=':'.join(mac[i:i+2] for i in range(0,12,2))
+            dash='-'.join(mac[i:i+2] for i in range(0,12,2))
+            if colon in blob or dash in blob:
+                return True
+    return False
+
 async def correlate(hosts:list[dict[str,Any]])->list[dict[str,Any]]:
     regs=await registries()
     devices=regs['devices']
@@ -148,16 +173,12 @@ async def correlate(hosts:list[dict[str,Any]])->list[dict[str,Any]]:
     by_dev=defaultdict(list)
     for e in ents:
         by_dev[e.get('device_id')].append(e)
-    text_index=[]
-    for d in devices:
-        blob=json.dumps(d,ensure_ascii=False).lower()
-        text_index.append((d,blob))
     for h in hosts:
         matches=[]
-        ip=(h.get('ip') or '').lower()
-        mac=(h.get('mac') or '').lower().replace(':','')
-        for d,blob in text_index:
-            if (ip and ip in blob) or (mac and mac in blob.replace(':','').replace('-','')):
+        ip=str(h.get('ip') or '').lower()
+        mac=_norm_mac(h.get('mac'))
+        for d in devices:
+            if _device_matches_identity(d,ip,mac):
                 matches.append({'device_id':d.get('id'),'name':d.get('name_by_user') or d.get('name'),'manufacturer':d.get('manufacturer'),'model':d.get('model'),'entities':[e.get('entity_id') for e in by_dev.get(d.get('id'),[])][:50]})
         h['home_assistant_matches']=matches
     return hosts
@@ -312,6 +333,7 @@ async def bluetooth_scan(seconds:int=30,query:str='')->dict[str,Any]:
     result['captured_at_unix']=int(time.time())
     return result
 
+@mcp.tool()
 async def network_scan_unmanaged(job_id:str)->dict[str,Any]:
     j=JOBS.get(job_id)
     if not j:
