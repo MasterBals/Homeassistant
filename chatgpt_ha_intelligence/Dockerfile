@@ -58,7 +58,11 @@ COPY OPENAI_TUNNEL_CLIENT_LICENSE.txt /licenses/openai-tunnel-client-LICENSE
 COPY OPENAI_TUNNEL_CLIENT_NOTICE.txt /licenses/openai-tunnel-client-NOTICE
 COPY run_v2.sh /run.sh
 COPY entrypoint.sh /entrypoint.sh
-RUN chmod a+x /run.sh /entrypoint.sh /usr/bin/tunnel-client /usr/bin/cloudflared \
+
+# Keep the public diagnostic version aligned with the add-on release without
+# duplicating build-time version constants in multiple Python source files.
+RUN sed -i 's/VERSION = "2.2.0"/VERSION = "2.5.0"/' /app/unified_mcp.py \
+    && chmod a+x /run.sh /entrypoint.sh /usr/bin/tunnel-client /usr/bin/cloudflared \
     && ln -sf /usr/bin/tunnel-client /usr/local/bin/tunnel-client-runtime
 
 LABEL \
