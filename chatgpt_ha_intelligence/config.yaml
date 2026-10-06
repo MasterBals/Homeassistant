@@ -1,5 +1,5 @@
 name: "ChatGPT Home Assistant Admin + Intelligence"
-version: "2.3.0"
+version: "2.4.0"
 slug: "chatgpt_ha_intelligence"
 description: >-
   Einheitliche ChatGPT-MCP-App für Home-Assistant-Administration,
@@ -51,6 +51,8 @@ options:
   yealink_ap_write_enabled: false
   yealink_protocol_write_enabled: false
   yealink_wifi_interface: "wlan0"
+  yealink_target_wifi_ssid: ""
+  yealink_target_wifi_passphrase: ""
   yealink_ap_ssid: "Yealink-Lab"
   yealink_ap_passphrase: ""
   yealink_ap_country: "CH"
@@ -79,6 +81,8 @@ schema:
   yealink_ap_write_enabled: bool
   yealink_protocol_write_enabled: bool
   yealink_wifi_interface: str
+  yealink_target_wifi_ssid: str
+  yealink_target_wifi_passphrase: password
   yealink_ap_ssid: str
   yealink_ap_passphrase: password
   yealink_ap_country: str
