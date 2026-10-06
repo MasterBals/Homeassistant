@@ -1,5 +1,11 @@
 # Changelog
 
+## 2.4.1
+
+- Fix the OpenAI Secure MCP Tunnel repeatedly exiting when the add-on `log_level` option is set to `INFO`, `DEBUG`, `WARNING` or `ERROR`.
+- Keep the add-on `LOG_LEVEL` environment variable for the Python services while explicitly removing it from the official `tunnel-client-runtime` process environment.
+- Preserve the existing tunnel reconnect/backoff behaviour and all 2.4.0 WLAN/Yealink settings unchanged.
+
 ## 2.4.0
 
 - Add separate VCM36-W target WLAN options `yealink_target_wifi_ssid` and `yealink_target_wifi_passphrase` to the ChatGPT MCP add-on configuration.
