@@ -1,5 +1,12 @@
 # Changelog
 
+## 2.5.2
+
+- Export the current revisioned Second Brain entries for topic `yealink`, including preserved history, to `/config/yealink_second_brain_export.json` at Intelligence bridge startup.
+- Generate the export only from the existing Second Brain database; add-on WLAN credentials and other secret option values are not read or copied into the snapshot.
+- Keep the live `/data/second_brain.sqlite3` database authoritative and unchanged; the JSON file is a read-only diagnostic bridge for clients whose tool projection does not expose `second_brain_*` calls.
+- Bump the extended Intelligence bridge wrapper to 0.5.1.
+
 ## 2.5.1
 
 - Add continuous passive `O_RDONLY|O_NONBLOCK` capture of the VCM36-W vendor HID channel on `/dev/hidraw*`.
