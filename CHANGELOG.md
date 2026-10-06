@@ -1,5 +1,12 @@
 # Changelog
 
+## 2.4.0
+
+- Add separate VCM36-W target WLAN options `yealink_target_wifi_ssid` and `yealink_target_wifi_passphrase` to the ChatGPT MCP add-on configuration.
+- Store the WLAN passphrase as a Home Assistant add-on `password` option and keep it out of MCP status payloads and logs.
+- Add internal `get_target_wifi_credentials()` handling for future RC8/pairing write tools and the read-only `yealink_wifi_profile_status` MCP tool.
+- Validate target SSID length and WPA2-PSK/passphrase format before future protocol use.
+
 ## 2.3.0
 
 - Fix the ChatGPT MCP add-on Core-restart loop by persisting a `restart_pending` marker before requesting a Home Assistant Core restart.
