@@ -23,7 +23,7 @@ PIDS = {
     0xB068: "VCM36-W upgrade",
 }
 SYSFS = Path("/sys/bus/usb/devices")
-OUT = Path("/config/yealink_vcm36w_usb_probe.json")
+OUT = Path("/homeassistant/yealink_vcm36w_usb_probe.json")
 INTERVAL = 5
 RUNNING = True
 
@@ -75,18 +75,11 @@ def _hidraw_for(device_dir: Path) -> list[dict[str, Any]]:
 
 
 def _hid_report_descriptor(hidraw_name: str) -> bytes | None:
-    # /sys/class/hidraw/hidrawN/device may itself be the HID node or a symlink
-    # below the USB interface. Search upwards/downwards for report_descriptor.
     root = Path("/sys/class/hidraw") / hidraw_name / "device"
     candidates = [root / "report_descriptor"]
     try:
         resolved = root.resolve()
-        candidates.extend(
-            [
-                resolved / "report_descriptor",
-                resolved.parent / "report_descriptor",
-            ]
-        )
+        candidates.extend([resolved / "report_descriptor", resolved.parent / "report_descriptor"])
     except OSError:
         pass
     for candidate in candidates:
@@ -103,7 +96,7 @@ def _report_ids(desc: bytes) -> list[int]:
     while i < len(desc):
         prefix = desc[i]
         i += 1
-        if prefix == 0xFE:  # long item
+        if prefix == 0xFE:
             if i + 1 >= len(desc):
                 break
             size = desc[i]
@@ -117,7 +110,6 @@ def _report_ids(desc: bytes) -> list[int]:
             break
         payload = desc[i : i + size]
         i += size
-        # Global item, Report ID tag 8, one-byte payload in normal descriptors.
         if item_type == 1 and tag == 8 and payload:
             rid = int.from_bytes(payload, "little")
             if rid not in ids:
@@ -166,26 +158,17 @@ def _get_report(dev: Any, interface_number: int, report_type: int, report_id: in
     """
     try:
         data = dev.ctrl_transfer(
-            0xA1,  # device-to-host, class, interface
-            0x01,  # HID GET_REPORT
+            0xA1,
+            0x01,
             ((report_type & 0xFF) << 8) | (report_id & 0xFF),
             interface_number,
             512,
             timeout=400,
         )
         raw = bytes(data)
-        return {
-            "ok": True,
-            "length": len(raw),
-            "hex": raw.hex(),
-        }
+        return {"ok": True, "length": len(raw), "hex": raw.hex()}
     except Exception as exc:
-        # Keep diagnostics compact. Pipe/stall errors are normal when a report ID
-        # does not implement a requested report type.
-        return {
-            "ok": False,
-            "error": f"{type(exc).__name__}: {str(exc)[:300]}",
-        }
+        return {"ok": False, "error": f"{type(exc).__name__}: {str(exc)[:300]}"}
 
 
 def _feature_reports(bus: int | None, address: int | None, hidraw: list[dict[str, Any]]) -> dict[str, Any]:
@@ -193,7 +176,6 @@ def _feature_reports(bus: int | None, address: int | None, hidraw: list[dict[str
         return {"available": False, "error": USB_IMPORT_ERROR, "interfaces": []}
     if bus is None or address is None:
         return {"available": False, "error": "USB bus/address unavailable", "interfaces": []}
-
     try:
         dev = usb.core.find(bus=bus, address=address)
     except Exception as exc:
@@ -206,28 +188,17 @@ def _feature_reports(bus: int | None, address: int | None, hidraw: list[dict[str
         iface = info.get("interface_number")
         if not isinstance(iface, int):
             continue
-        report_ids = info.get("report_ids") or [0]
-        # Descriptor without Report IDs uses ID 0. If IDs exist, request only
-        # those declared by the device.
-        ids = report_ids if report_ids else [0]
+        ids = info.get("report_ids") or [0]
         rows: list[dict[str, Any]] = []
         for rid in ids:
-            feature = _get_report(dev, iface, 3, int(rid))
-            input_report = _get_report(dev, iface, 1, int(rid))
             rows.append(
                 {
                     "report_id": int(rid),
-                    "feature": feature,
-                    "input": input_report,
+                    "feature": _get_report(dev, iface, 3, int(rid)),
+                    "input": _get_report(dev, iface, 1, int(rid)),
                 }
             )
-        output.append(
-            {
-                "interface_number": iface,
-                "hidraw": info.get("hidraw"),
-                "reports": rows,
-            }
-        )
+        output.append({"interface_number": iface, "hidraw": info.get("hidraw"), "reports": rows})
     return {"available": True, "interfaces": output}
 
 
