@@ -52,6 +52,7 @@ COPY state_store.py /app/state_store.py
 COPY migrate_second_brain.py /app/migrate_second_brain.py
 COPY audit_ui.py /app/audit_ui.py
 COPY arlo_voice_listener.py /app/arlo_voice_listener.py
+COPY yealink_usb_probe.py /app/yealink_usb_probe.py
 COPY OPENAI_TUNNEL_CLIENT_LICENSE.txt /licenses/openai-tunnel-client-LICENSE
 COPY OPENAI_TUNNEL_CLIENT_NOTICE.txt /licenses/openai-tunnel-client-NOTICE
 COPY run_v2.sh /run.sh
