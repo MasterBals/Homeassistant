@@ -350,7 +350,10 @@ start_tunnel() {
   export CONTROL_PLANE_API_KEY="${RUNTIME_API_KEY}"
   export MCP_SERVER_URL="http://127.0.0.1:${UNIFIED_PORT}/mcp"
   echo "Starting official OpenAI Secure MCP Tunnel for ${TUNNEL_ID}..."
-  /usr/local/bin/tunnel-client-runtime run &
+  # LOG_LEVEL belongs to the add-on Python services. The official tunnel client
+  # also consumes that generic variable and rejects it unless a structured tunnel
+  # log format is configured, so keep it out of the tunnel process environment.
+  env -u LOG_LEVEL /usr/local/bin/tunnel-client-runtime run &
   TUNNEL_PID=$!
   echo "OpenAI tunnel client started. No inbound router port is required."
 }
