@@ -1,5 +1,12 @@
 # Changelog
 
+## 2.5.1
+
+- Add continuous passive `O_RDONLY|O_NONBLOCK` capture of the VCM36-W vendor HID channel on `/dev/hidraw*`.
+- Capture only devices whose HID report descriptor declares vendor report ID `0xC8`; no writes, `SET_REPORT`, kernel-driver detach, firmware command or pairing command are performed.
+- Retain the most recent unique input reports in `/config/yealink_vcm36w_usb_probe.json` with report ID, length, timestamps, repeat count and SHA-256 prefix for RC8 framing analysis.
+- Keep protocol writes disabled and preserve the 2.5.0 revisioned Second Brain and verified pairing findings unchanged.
+
 ## 2.5.0
 
 - Add explicit Second Brain revision numbers and preserve the original `created_at` / `updated_at` timestamps for every superseded finding.
