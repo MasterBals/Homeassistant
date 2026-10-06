@@ -1,5 +1,16 @@
 # Changelog
 
+## 2.5.0
+
+- Add explicit Second Brain revision numbers and preserve the original `created_at` / `updated_at` timestamps for every superseded finding.
+- Record `change_reason`, `archived_at` and `superseded_reason` so later corrections remain traceable instead of silently replacing earlier conclusions.
+- Treat identical upserts as no-ops so repeated checks do not create meaningless history entries.
+- Expose `second_brain_status`, `second_brain_search`, `second_brain_get` and `second_brain_upsert` through the Intelligence MCP so verified findings can be persisted during active investigations.
+- Add a one-time bootstrap that backfills the verified VCM36-W request/report/RC8 write-path findings and corrects the stale direct-`0x0231` next-step note only when that obsolete text is still present.
+- Keep WLAN passwords, tokens and other secrets out of Second Brain; target WLAN credentials remain stored only in Home Assistant add-on options.
+- Add a regression test proving that revision 1 remains readable after a corrected revision 2 is stored.
+- Align the Unified MCP diagnostic version with add-on version 2.5.0.
+
 ## 2.4.4
 
 - Correct the VCM36-W USB vendor ID used by the Yealink lab from the erroneous `1b51` value to the actual Yealink VID `6993` reported by Home Assistant USB discovery and the physical microphone.

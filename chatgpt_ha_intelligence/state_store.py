@@ -29,6 +29,16 @@ def conn(path: Path) -> sqlite3.Connection:
     return db
 
 
+def _columns(db: sqlite3.Connection, table: str) -> set[str]:
+    return {str(row[1]) for row in db.execute(f"PRAGMA table_info({table})").fetchall()}
+
+
+def _add_column(db: sqlite3.Connection, table: str, definition: str) -> None:
+    name = definition.split()[0]
+    if name not in _columns(db, table):
+        db.execute(f"ALTER TABLE {table} ADD COLUMN {definition}")
+
+
 def init() -> None:
     with conn(AUDIT_DB) as db:
         db.executescript("""
@@ -62,6 +72,8 @@ def init() -> None:
           metadata_json TEXT NOT NULL,
           created_at TEXT NOT NULL,
           updated_at TEXT NOT NULL,
+          revision INTEGER NOT NULL DEFAULT 1,
+          change_reason TEXT NOT NULL DEFAULT '',
           PRIMARY KEY(topic,key)
         );
         CREATE TABLE IF NOT EXISTS knowledge_history(
@@ -74,10 +86,25 @@ def init() -> None:
           source TEXT NOT NULL,
           confidence TEXT NOT NULL,
           metadata_json TEXT NOT NULL,
-          archived_at TEXT NOT NULL
+          archived_at TEXT NOT NULL,
+          revision INTEGER NOT NULL DEFAULT 1,
+          created_at TEXT,
+          updated_at TEXT,
+          change_reason TEXT NOT NULL DEFAULT '',
+          superseded_reason TEXT NOT NULL DEFAULT ''
         );
         CREATE INDEX IF NOT EXISTS idx_knowledge_topic ON knowledge(topic);
+        CREATE INDEX IF NOT EXISTS idx_history_topic_key ON knowledge_history(topic,key,id DESC);
         """)
+        _add_column(db, "knowledge", "revision INTEGER NOT NULL DEFAULT 1")
+        _add_column(db, "knowledge", "change_reason TEXT NOT NULL DEFAULT ''")
+        _add_column(db, "knowledge_history", "revision INTEGER NOT NULL DEFAULT 1")
+        _add_column(db, "knowledge_history", "created_at TEXT")
+        _add_column(db, "knowledge_history", "updated_at TEXT")
+        _add_column(db, "knowledge_history", "change_reason TEXT NOT NULL DEFAULT ''")
+        _add_column(db, "knowledge_history", "superseded_reason TEXT NOT NULL DEFAULT ''")
+        db.execute("UPDATE knowledge SET revision=1 WHERE revision IS NULL OR revision < 1")
+        db.execute("UPDATE knowledge_history SET revision=1 WHERE revision IS NULL OR revision < 1")
 
 
 def sanitize(value: Any, key: str | None = None) -> Any:
@@ -111,7 +138,7 @@ def classify(tool: str) -> str:
         return "write"
     if tool in ACTION_TOOLS:
         return "action"
-    if tool.startswith("SecondBrain"):
+    if tool.startswith("SecondBrain") or tool.startswith("second_brain"):
         return "knowledge"
     if tool.startswith("McpAudit"):
         return "audit"
@@ -192,38 +219,84 @@ def audit_status() -> dict[str, Any]:
     }
 
 
+def _same_knowledge(previous: sqlite3.Row, *, title: str, content: str, tags_json: str,
+                    source: str, confidence: str, metadata_json: str) -> bool:
+    return (
+        previous["title"] == title
+        and previous["content"] == content
+        and previous["tags_json"] == tags_json
+        and previous["source"] == source
+        and previous["confidence"] == confidence
+        and previous["metadata_json"] == metadata_json
+    )
+
+
 def brain_upsert(*, topic: str, key: str, title: str, content: str,
                  tags: list[str] | None = None, source: str = "chatgpt_mcp",
-                 confidence: str = "verified", metadata: dict[str, Any] | None = None) -> dict[str, Any]:
+                 confidence: str = "verified", metadata: dict[str, Any] | None = None,
+                 change_reason: str = "") -> dict[str, Any]:
     topic, key, title, content = (value.strip() for value in (topic, key, title, content))
+    change_reason = str(change_reason or "").strip()
     if not all((topic, key, title, content)):
         raise ValueError("topic, key, title and content are required")
+    if confidence not in {"verified", "probable", "hypothesis"}:
+        raise ValueError("confidence must be verified, probable or hypothesis")
     now = utcnow()
     tags_json = json.dumps(sorted(set(tags or [])), ensure_ascii=False)
     metadata_json = json.dumps(metadata or {}, ensure_ascii=False, sort_keys=True)
     with conn(BRAIN_DB) as db:
         previous = db.execute("SELECT * FROM knowledge WHERE topic=? AND key=?", (topic, key)).fetchone()
+        if previous and _same_knowledge(previous, title=title, content=content, tags_json=tags_json,
+                                        source=source, confidence=confidence, metadata_json=metadata_json):
+            return {
+                "topic": topic,
+                "key": key,
+                "action": "unchanged",
+                "revision": int(previous["revision"] or 1),
+                "created_at": previous["created_at"],
+                "updated_at": previous["updated_at"],
+            }
+
         action = "created"
+        revision = 1
         created_at = now
         if previous:
             action = "updated"
+            revision = int(previous["revision"] or 1) + 1
             created_at = previous["created_at"]
             db.execute(
-                """INSERT INTO knowledge_history(topic,key,title,content,tags_json,source,confidence,metadata_json,archived_at)
-                   VALUES(?,?,?,?,?,?,?,?,?)""",
-                (previous["topic"], previous["key"], previous["title"], previous["content"], previous["tags_json"],
-                 previous["source"], previous["confidence"], previous["metadata_json"], now),
+                """INSERT INTO knowledge_history(
+                       topic,key,title,content,tags_json,source,confidence,metadata_json,archived_at,
+                       revision,created_at,updated_at,change_reason,superseded_reason)
+                   VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?)""",
+                (
+                    previous["topic"], previous["key"], previous["title"], previous["content"],
+                    previous["tags_json"], previous["source"], previous["confidence"], previous["metadata_json"], now,
+                    int(previous["revision"] or 1), previous["created_at"], previous["updated_at"],
+                    previous["change_reason"] or "", change_reason,
+                ),
             )
         db.execute(
-            """INSERT INTO knowledge(topic,key,title,content,tags_json,source,confidence,metadata_json,created_at,updated_at)
-               VALUES(?,?,?,?,?,?,?,?,?,?)
+            """INSERT INTO knowledge(
+                   topic,key,title,content,tags_json,source,confidence,metadata_json,created_at,updated_at,revision,change_reason)
+               VALUES(?,?,?,?,?,?,?,?,?,?,?,?)
                ON CONFLICT(topic,key) DO UPDATE SET
                  title=excluded.title, content=excluded.content, tags_json=excluded.tags_json,
                  source=excluded.source, confidence=excluded.confidence,
-                 metadata_json=excluded.metadata_json, updated_at=excluded.updated_at""",
-            (topic, key, title, content, tags_json, source, confidence, metadata_json, created_at, now),
+                 metadata_json=excluded.metadata_json, updated_at=excluded.updated_at,
+                 revision=excluded.revision, change_reason=excluded.change_reason""",
+            (topic, key, title, content, tags_json, source, confidence, metadata_json,
+             created_at, now, revision, change_reason),
         )
-    return {"topic": topic, "key": key, "action": action, "updated_at": now}
+    return {
+        "topic": topic,
+        "key": key,
+        "action": action,
+        "revision": revision,
+        "created_at": created_at,
+        "updated_at": now,
+        "change_reason": change_reason,
+    }
 
 
 def _brain_row(row: sqlite3.Row) -> dict[str, Any]:
@@ -241,8 +314,9 @@ def brain_get(topic: str, key: str, include_history: bool = False) -> dict[str, 
         result = _brain_row(row)
         if include_history:
             history = db.execute(
-                """SELECT topic,key,title,content,tags_json,source,confidence,metadata_json,archived_at
-                   FROM knowledge_history WHERE topic=? AND key=? ORDER BY id DESC LIMIT 50""",
+                """SELECT topic,key,title,content,tags_json,source,confidence,metadata_json,
+                          revision,created_at,updated_at,change_reason,archived_at,superseded_reason
+                   FROM knowledge_history WHERE topic=? AND key=? ORDER BY id DESC LIMIT 100""",
                 (topic, key),
             ).fetchall()
             result["history"] = [_brain_row(item) for item in history]
@@ -280,12 +354,16 @@ def brain_status() -> dict[str, Any]:
             for row in db.execute("SELECT topic,COUNT(*) FROM knowledge GROUP BY topic ORDER BY COUNT(*) DESC,topic")
         ]
         last_updated = db.execute("SELECT MAX(updated_at) FROM knowledge").fetchone()[0]
+        max_revision = db.execute("SELECT COALESCE(MAX(revision),1) FROM knowledge").fetchone()[0]
     return {
         "entries": int(entries),
         "revisions": int(revisions),
+        "max_current_revision": int(max_revision or 1),
         "topics": topics,
         "database": str(BRAIN_DB),
         "last_updated": last_updated,
+        "timestamp_timezone": "UTC",
+        "history_model": "append-only previous revisions; current row keeps latest revision",
     }
 
 
