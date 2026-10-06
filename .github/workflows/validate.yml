@@ -10,6 +10,7 @@ jobs:
       - uses: actions/setup-python@v5
         with: {python-version: '3.12'}
       - run: python -m compileall chatgpt_ha_intelligence ha_intelligence_bridge
+      - run: python chatgpt_ha_intelligence/test_second_brain_history.py
       - run: bash -n chatgpt_ha_intelligence/run_v2.sh
 
   validate:
