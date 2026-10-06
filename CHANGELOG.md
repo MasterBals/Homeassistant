@@ -1,5 +1,13 @@
 # Changelog
 
+## 2.5.3
+
+- Synchronize the latest verified VCM36-W pairing findings into the authoritative `/data/second_brain.sqlite3` store through the revision-aware bootstrap path.
+- Persist the live USB/HID RC8 transport facts for the connected VCM36-W (`6993:B06A`, report `0xC8`, endpoints `0x06`/`0x85`) without storing WLAN secrets.
+- Record that RC8 command `0x0246` carries the complete `0x404` PairTaskConfigData through the Linux/HID `MsgSet` path and that the resulting 1044-byte RC8 request requires multi-fragment HID transmission.
+- Record the current preflight result: no directly usable non-empty `pair_config` / `ext_params` values are available yet, no pairing payload was generated, and no pairing write has been performed.
+- Run the verified Second Brain bootstrap explicitly at add-on startup so changed findings archive prior revisions instead of silently replacing them.
+
 ## 2.5.2
 
 - Export the current revisioned Second Brain entries for topic `yealink`, including preserved history, to `/config/yealink_second_brain_export.json` at Intelligence bridge startup.
