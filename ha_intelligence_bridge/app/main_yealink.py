@@ -2,9 +2,9 @@ from __future__ import annotations
 
 import main as base
 import yealink_lab
-from bootstrap_second_brain import main as bootstrap_second_brain
 from network_correlation import install_enhanced_correlation
 from second_brain_tools import register_second_brain_tools
+from bootstrap_second_brain import main as bootstrap_second_brain
 from yealink_lab import register_yealink_tools
 from yealink_wifi_profile import register_target_wifi_tools
 
