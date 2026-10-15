@@ -2,50 +2,74 @@
   "title": "IBC Energie Wasser Chur",
   "config": {
     "step": {
-      "user": {
-        "title": "IBC Kundenportal verbinden",
-        "description": "Verbindet den 15-Minuten-Lastgang des IBC-Kundenportals mit Home Assistant. Der Bearer-Token wird nur lokal in Home Assistant gespeichert.",
+      "subject": {
+        "title": "IBC Kundenzuordnung",
+        "description": "Die OAuth-Anmeldung war erfolgreich. Das Portal hat die interne Subject-ID nicht eindeutig im Token oder über einen Listen-Endpunkt geliefert. Trage die Subject-ID einmalig ein; alle Objekte, Medien und Messpunkte werden danach automatisch ermittelt.",
         "data": {
-          "access_token": "Bearer-Token",
-          "subject_id": "Subject-ID",
-          "meteringpoint": "Messpunkt-ID",
-          "role": "Rolle",
-          "aggregation": "Aggregation",
-          "history_days": "Historie beim ersten Import (Tage)"
+          "subject_id": "Subject-ID"
+        },
+        "data_description": {
+          "subject_id": "Interne IBC/EBP-Subject-ID, beispielsweise aus einem Portal-Request wie objects?subject_id=..."
+        }
+      },
+      "subject_select": {
+        "title": "IBC Kundenzuordnung auswählen",
+        "description": "Es wurden mehrere Subject-IDs gefunden. Wähle die gewünschte Kundenzuordnung.",
+        "data": {
+          "subject_id": "Subject-ID"
+        }
+      },
+      "role": {
+        "title": "IBC Rolle auswählen",
+        "description": "Für dieses Subject wurden mehrere Rollen gefunden.",
+        "data": {
+          "role": "Rolle"
+        }
+      },
+      "object": {
+        "title": "Versorgungsobjekt auswählen",
+        "description": "Wähle die Liegenschaft bzw. den Anschluss, dessen Verbrauch in Home Assistant eingebunden werden soll.",
+        "data": {
+          "object_id": "Objekt"
+        }
+      },
+      "meteringpoint": {
+        "title": "Messpunkt auswählen",
+        "description": "Wähle den gewünschten IBC-Messpunkt. Verfügbare Medienkategorien werden automatisch abgefragt.",
+        "data": {
+          "meteringpoint": "Messpunkt"
         }
       },
       "reauth_confirm": {
-        "title": "IBC erneut authentifizieren",
-        "description": "Der bisherige IBC-Token ist abgelaufen. Hinterlege einen neuen Bearer-Token.",
-        "data": {
-          "access_token": "Bearer-Token"
-        }
+        "title": "IBC erneut anmelden",
+        "description": "Die IBC-Anmeldung ist nicht mehr gültig. Melde das Kundenportal erneut über OAuth 2.0 / OpenID Connect an."
       }
     },
     "error": {
-      "invalid_auth": "Der Bearer-Token ist ungültig oder abgelaufen.",
-      "cannot_connect": "Das IBC-Portal konnte nicht abgefragt werden oder lieferte keine Messdaten.",
+      "subject_not_found": "Die Subject-ID konnte mit diesem IBC-Konto nicht abgefragt werden.",
+      "cannot_connect": "Das IBC-Portal konnte nicht abgefragt werden.",
       "unknown": "Unerwarteter Fehler. Details stehen im Home-Assistant-Protokoll."
     },
     "abort": {
       "already_configured": "Dieser IBC-Messpunkt ist bereits eingerichtet.",
-      "reauth_successful": "IBC wurde erfolgreich erneut authentifiziert."
+      "reauth_successful": "IBC wurde erfolgreich erneut authentifiziert.",
+      "no_objects": "Für dieses IBC-Subject wurden keine Versorgungsobjekte gefunden.",
+      "no_meteringpoints": "Für das ausgewählte Objekt wurden keine Messpunkte gefunden."
     }
   },
   "options": {
     "step": {
       "init": {
         "title": "IBC Einstellungen",
+        "description": "Lege fest, wie weit die IBC-15-Minuten-Werte beim ersten bzw. nächsten Nachladen rückwirkend importiert werden sollen.",
         "data": {
-          "access_token": "Bearer-Token",
-          "history_days": "Historie beim ersten Import (Tage)"
+          "history_days": "Historie importieren (Tage)"
         }
       }
-    },
-    "error": {
-      "invalid_auth": "Der Bearer-Token ist ungültig oder abgelaufen.",
-      "cannot_connect": "Das IBC-Portal konnte nicht abgefragt werden oder lieferte keine Messdaten."
     }
+  },
+  "application_credentials": {
+    "description": "IBC verwendet den öffentlichen PKCE-Client des Kundenportals. Für die normale Einrichtung müssen keine eigenen Client-Zugangsdaten erstellt werden."
   },
   "entity": {
     "sensor": {
