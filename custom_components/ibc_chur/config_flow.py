@@ -27,7 +27,12 @@ from homeassistant.helpers.selector import (
 )
 
 from .api import IBCClient, IBCConnectionError, IBCDataError
-from .auth import IBCAuthConnectionError, IBCAuthUnsupported, IBCAuthenticator, IBCInvalidAuth
+from .auth import (
+    IBCAuthConnectionError,
+    IBCAuthenticator,
+    IBCAuthUnsupported,
+    IBCInvalidAuth,
+)
 from .const import (
     CONF_AGGREGATION,
     CONF_HISTORY_DAYS,
