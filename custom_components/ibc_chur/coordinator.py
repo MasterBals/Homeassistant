@@ -72,7 +72,7 @@ class IBCDataUpdateCoordinator(DataUpdateCoordinator[IBCData]):
         self.api = api
         self.history_days = max(1, min(int(history_days), 365))
         digest = hashlib.sha1(api.meteringpoint.encode("utf-8")).hexdigest()[:12]
-        self.statistic_id = f"{DOMAIN}:energy_consumption_{digest}"
+        self.statistic_id = f"{DOMAIN}:energy_consumption_hourly_{digest}"
 
     async def _async_update_data(self) -> IBCData:
         today = dt_util.now().date()
