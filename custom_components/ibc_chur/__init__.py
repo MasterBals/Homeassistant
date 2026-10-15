@@ -2,16 +2,13 @@
 
 from __future__ import annotations
 
-from homeassistant.components.application_credentials import (
-    ClientCredential,
-    async_import_client_credential,
-)
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers import config_entry_oauth2_flow
 from homeassistant.helpers.aiohttp_client import async_get_clientsession
 
 from .api import IBCClient
+from .application_credentials import async_get_fixed_implementation
 from .const import (
     CONF_AGGREGATION,
     CONF_HISTORY_DAYS,
@@ -22,8 +19,6 @@ from .const import (
     DEFAULT_HISTORY_DAYS,
     DEFAULT_ROLE,
     DOMAIN,
-    OAUTH_CLIENT_ID,
-    OAUTH_CLIENT_SECRET,
     PLATFORMS,
 )
 from .coordinator import IBCDataUpdateCoordinator
@@ -31,13 +26,17 @@ from .coordinator import IBCDataUpdateCoordinator
 type IBCConfigEntry = ConfigEntry[IBCDataUpdateCoordinator]
 
 
-async def async_setup(hass: HomeAssistant, config: dict) -> bool:
-    """Register IBC's public OAuth client used by the customer portal."""
-    await async_import_client_credential(
-        hass,
-        DOMAIN,
-        ClientCredential(OAUTH_CLIENT_ID, OAUTH_CLIENT_SECRET),
+async def _async_register_fixed_oauth(hass: HomeAssistant) -> None:
+    """Register the public OAuth/PKCE implementation used by the IBC portal."""
+    implementation = await async_get_fixed_implementation(hass)
+    config_entry_oauth2_flow.async_register_implementation(
+        hass, DOMAIN, implementation
     )
+
+
+async def async_setup(hass: HomeAssistant, config: dict) -> bool:
+    """Set up the IBC integration and its public OAuth client."""
+    await _async_register_fixed_oauth(hass)
     return True
 
 
@@ -50,6 +49,7 @@ async def async_migrate_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
 
 async def async_setup_entry(hass: HomeAssistant, entry: IBCConfigEntry) -> bool:
     """Set up IBC Chur from a config entry."""
+    await _async_register_fixed_oauth(hass)
     config = {**entry.data, **entry.options}
 
     oauth_session = None
