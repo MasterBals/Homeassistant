@@ -2,9 +2,17 @@
   "title": "IBC Energie Wasser Chur",
   "config": {
     "step": {
+      "user": {
+        "title": "IBC Kundenportal anmelden",
+        "description": "Melde dich mit deinem normalen IBC-Kundenportal-Konto an. Das Passwort wird nur für die Anmeldung verwendet und nicht gespeichert. Danach speichert Home Assistant ausschliesslich die OAuth-Tokens und erneuert sie automatisch.",
+        "data": {
+          "username": "Benutzername / E-Mail",
+          "password": "Passwort"
+        }
+      },
       "subject": {
         "title": "IBC Kundenzuordnung",
-        "description": "Die OAuth-Anmeldung war erfolgreich. Das Portal hat die interne Subject-ID nicht eindeutig im Token oder über einen Listen-Endpunkt geliefert. Trage die Subject-ID einmalig ein; alle Objekte, Medien und Messpunkte werden danach automatisch ermittelt.",
+        "description": "Die Anmeldung war erfolgreich. Das Portal hat die interne Subject-ID nicht eindeutig geliefert. Trage sie einmalig ein; alle weiteren Objekte, Medien und Messpunkte werden automatisch ermittelt.",
         "data": {
           "subject_id": "Subject-ID"
         },
@@ -42,12 +50,18 @@
       },
       "reauth_confirm": {
         "title": "IBC erneut anmelden",
-        "description": "Die IBC-Anmeldung ist nicht mehr gültig. Melde das Kundenportal erneut über OAuth 2.0 / OpenID Connect an."
+        "description": "Der gespeicherte Refresh-Token ist nicht mehr gültig. Melde dich erneut mit deinem IBC-Kundenportal-Konto an; das Passwort wird nicht gespeichert.",
+        "data": {
+          "username": "Benutzername / E-Mail",
+          "password": "Passwort"
+        }
       }
     },
     "error": {
+      "invalid_auth": "Benutzername oder Passwort wurden von IBC abgelehnt.",
+      "auth_unsupported": "Der IBC-Anmeldedienst verlangt einen zusätzlichen oder derzeit nicht automatisch unterstützten Schritt. Details stehen im Home-Assistant-Protokoll.",
       "subject_not_found": "Die Subject-ID konnte mit diesem IBC-Konto nicht abgefragt werden.",
-      "cannot_connect": "Das IBC-Portal konnte nicht abgefragt werden.",
+      "cannot_connect": "IBC Login bzw. Kundenportal konnte nicht erreicht werden.",
       "unknown": "Unerwarteter Fehler. Details stehen im Home-Assistant-Protokoll."
     },
     "abort": {
@@ -67,9 +81,6 @@
         }
       }
     }
-  },
-  "application_credentials": {
-    "description": "IBC verwendet den öffentlichen PKCE-Client des Kundenportals. Für die normale Einrichtung müssen keine eigenen Client-Zugangsdaten erstellt werden."
   },
   "entity": {
     "sensor": {
