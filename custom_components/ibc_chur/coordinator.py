@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import hashlib
 import logging
+from collections import defaultdict
 from dataclasses import dataclass
 from datetime import UTC, date, datetime, timedelta
 
@@ -37,10 +38,16 @@ class IBCData:
 
     latest_power_kw: float | None
     latest_timestamp: datetime | None
+    latest_day: date | None
+    latest_day_energy_kwh: float | None
     yesterday_energy_kwh: float | None
+    last_7_days_energy_kwh: float | None
+    month_energy_kwh: float | None
+    data_age_hours: float | None
     last_imported_day: date | None
     statistic_id: str
     imported_samples: int
+    tracked_energy_kwh: float | None
 
 
 class IBCDataUpdateCoordinator(DataUpdateCoordinator[IBCData]):
@@ -92,96 +99,126 @@ class IBCDataUpdateCoordinator(DataUpdateCoordinator[IBCData]):
             first_day = today - timedelta(days=self.history_days)
 
         days: list[IBCMeterDay] = []
+        data_errors: list[str] = []
         day = first_day
-        try:
-            while day <= yesterday:
+        while day <= yesterday:
+            try:
                 days.append(await self.api.async_get_meter_day(day))
-                day += timedelta(days=1)
-        except IBCAuthError as err:
-            raise ConfigEntryAuthFailed(
-                "IBC access token is invalid or expired"
-            ) from err
-        except (IBCConnectionError, IBCDataError) as err:
-            raise UpdateFailed(f"IBC update failed: {err}") from err
+            except IBCAuthError as err:
+                raise ConfigEntryAuthFailed(
+                    "IBC access token is invalid or expired"
+                ) from err
+            except IBCConnectionError as err:
+                raise UpdateFailed(f"IBC update failed: {err}") from err
+            except IBCDataError as err:
+                data_errors.append(f"{day.isoformat()}: {err}")
+                _LOGGER.warning("Skipping malformed IBC meter day %s: %s", day, err)
+            day += timedelta(days=1)
 
-        imported_samples = await self._async_insert_statistics(days, last_stat)
-        yesterday_data = next(
-            (
-                meter_day
-                for meter_day in reversed(days)
-                if meter_day.requested_day == yesterday
-            ),
-            None,
-        )
-
-        if yesterday_data is None:
-            return IBCData(
-                latest_power_kw=None,
-                latest_timestamp=None,
-                yesterday_energy_kwh=None,
-                last_imported_day=None,
-                statistic_id=self.statistic_id,
-                imported_samples=imported_samples,
+        valid_days = [meter_day for meter_day in days if meter_day.points]
+        if not valid_days and data_errors:
+            raise UpdateFailed(
+                "IBC returned no usable meter data; first parse error: "
+                f"{data_errors[0]}"
             )
 
-        latest = yesterday_data.points[-1]
+        imported_samples, tracked_energy_kwh = await self._async_insert_statistics(
+            valid_days, last_stat
+        )
+        latest_data = valid_days[-1] if valid_days else None
+        yesterday_data = next(
+            (d for d in reversed(valid_days) if d.requested_day == yesterday), None
+        )
+
+        latest_power_kw = None
+        latest_timestamp = None
+        data_age_hours = None
+        if latest_data is not None:
+            latest = latest_data.points[-1]
+            latest_power_kw = latest.power_kw
+            latest_timestamp = latest.timestamp
+            try:
+                age = dt_util.now() - latest.timestamp.astimezone(dt_util.DEFAULT_TIME_ZONE)
+                data_age_hours = max(0.0, age.total_seconds() / 3600)
+            except (ValueError, OverflowError):
+                data_age_hours = None
+
+        last_7_days_start = yesterday - timedelta(days=6)
+        last_7_days_values = [
+            d.energy_kwh
+            for d in valid_days
+            if last_7_days_start <= d.requested_day <= yesterday
+        ]
+        month_values = [
+            d.energy_kwh
+            for d in valid_days
+            if d.requested_day.year == today.year and d.requested_day.month == today.month
+        ]
+
         return IBCData(
-            latest_power_kw=latest.power_kw,
-            latest_timestamp=latest.timestamp,
-            yesterday_energy_kwh=round(yesterday_data.energy_kwh, 6),
-            last_imported_day=yesterday,
+            latest_power_kw=latest_power_kw,
+            latest_timestamp=latest_timestamp,
+            latest_day=latest_data.requested_day if latest_data else None,
+            latest_day_energy_kwh=round(latest_data.energy_kwh, 6) if latest_data else None,
+            yesterday_energy_kwh=round(yesterday_data.energy_kwh, 6) if yesterday_data else None,
+            last_7_days_energy_kwh=round(sum(last_7_days_values), 6) if last_7_days_values else None,
+            month_energy_kwh=round(sum(month_values), 6) if month_values else None,
+            data_age_hours=round(data_age_hours, 2) if data_age_hours is not None else None,
+            last_imported_day=latest_data.requested_day if latest_data else None,
             statistic_id=self.statistic_id,
             imported_samples=imported_samples,
+            tracked_energy_kwh=round(tracked_energy_kwh, 6) if tracked_energy_kwh is not None else None,
         )
 
     async def _async_insert_statistics(
-        self,
-        days: list[IBCMeterDay],
-        previous: dict | None,
-    ) -> int:
-        """Convert average kW values to 15-minute kWh statistics."""
-        last_start: datetime | None = None
+        self, days: list[IBCMeterDay], previous: dict | None
+    ) -> tuple[int, float | None]:
+        """Convert 15-minute average kW values to HA hourly kWh statistics."""
+        last_start = None
         running_sum = 0.0
+        has_previous_sum = False
         if previous and self.statistic_id in previous:
             row = previous[self.statistic_id][0]
             last_start = dt_util.utc_from_timestamp(float(row["start"]))
             running_sum = float(row.get("sum") or 0.0)
+            has_previous_sum = True
 
-        rows: list[StatisticData] = []
-        seen: set[float] = set()
+        hourly_energy: dict[datetime, float] = defaultdict(float)
+        seen_intervals: set[float] = set()
         for meter_day in days:
             for point in meter_day.points:
-                # IBC labels each 15-minute mean at the end of its interval.
                 interval_start = point.timestamp - timedelta(minutes=15)
                 start_utc = interval_start.astimezone(UTC)
                 stamp = start_utc.timestamp()
-                if stamp in seen:
+                if stamp in seen_intervals:
                     continue
-                seen.add(stamp)
-                if last_start is not None and start_utc <= last_start:
-                    continue
-                energy_kwh = max(0.0, point.power_kw * 0.25)
-                running_sum += energy_kwh
-                rows.append(
-                    StatisticData(
-                        start=start_utc,
-                        state=energy_kwh,
-                        sum=running_sum,
-                    )
-                )
+                seen_intervals.add(stamp)
+                hour_start = start_utc.replace(minute=0, second=0, microsecond=0)
+                hourly_energy[hour_start] += max(0.0, point.power_kw * 0.25)
 
-        if not rows:
-            return 0
+        rows: list[StatisticData] = []
+        for hour_start in sorted(hourly_energy):
+            if last_start is not None and hour_start <= last_start:
+                continue
+            state = hourly_energy[hour_start]
+            running_sum += state
+            rows.append(StatisticData(start=hour_start, state=state, sum=running_sum))
 
-        metadata = StatisticMetaData(
-            mean_type=StatisticMeanType.NONE,
-            has_sum=True,
-            name="IBC Strombezug",
-            source=DOMAIN,
-            statistic_id=self.statistic_id,
-            unit_class=EnergyConverter.UNIT_CLASS,
-            unit_of_measurement=UnitOfEnergy.KILO_WATT_HOUR,
-        )
-        async_add_external_statistics(self.hass, metadata, rows)
-        _LOGGER.info("Imported %s IBC quarter-hour statistics", len(rows))
-        return len(rows)
+        if rows:
+            metadata = StatisticMetaData(
+                mean_type=StatisticMeanType.NONE,
+                has_sum=True,
+                name="IBC Strombezug",
+                source=DOMAIN,
+                statistic_id=self.statistic_id,
+                unit_class=EnergyConverter.UNIT_CLASS,
+                unit_of_measurement=UnitOfEnergy.KILO_WATT_HOUR,
+            )
+            async_add_external_statistics(self.hass, metadata, rows)
+            _LOGGER.info(
+                "Imported %s IBC hourly energy statistics from quarter-hour data",
+                len(rows),
+            )
+            return len(rows), running_sum
+
+        return 0, running_sum if has_previous_sum else None
