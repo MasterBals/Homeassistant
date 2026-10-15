@@ -7,8 +7,9 @@ from datetime import date, datetime, time
 from typing import Any
 
 from aiohttp import ClientError, ClientResponseError, ClientSession
+from homeassistant.helpers.config_entry_oauth2_flow import OAuth2Session
 
-from .const import DEFAULT_BASE_URL
+from .const import DEFAULT_BASE_URL, DEFAULT_SETTINGS_URL
 
 
 class IBCError(Exception):
@@ -58,20 +59,25 @@ class IBCClient:
     def __init__(
         self,
         session: ClientSession,
-        access_token: str,
-        subject_id: str,
-        meteringpoint: str,
+        *,
+        oauth_session: OAuth2Session | None = None,
+        access_token: str | None = None,
+        subject_id: str | None = None,
+        meteringpoint: str | None = None,
         role: int = 2,
         aggregation: int = 1,
         base_url: str = DEFAULT_BASE_URL,
+        settings_url: str = DEFAULT_SETTINGS_URL,
     ) -> None:
         self._session = session
-        self._access_token = self._normalize_token(access_token)
-        self.subject_id = str(subject_id)
-        self.meteringpoint = str(meteringpoint)
+        self._oauth_session = oauth_session
+        self._access_token = self._normalize_token(access_token or "")
+        self.subject_id = str(subject_id) if subject_id is not None else None
+        self.meteringpoint = str(meteringpoint) if meteringpoint is not None else None
         self.role = int(role)
         self.aggregation = int(aggregation)
         self.base_url = base_url.rstrip("/")
+        self.settings_url = settings_url.rstrip("/")
 
     @staticmethod
     def _normalize_token(value: str) -> str:
@@ -80,26 +86,33 @@ class IBCClient:
             return value[7:].strip()
         return value
 
-    def update_access_token(self, access_token: str) -> None:
-        """Replace the bearer token without recreating the client."""
-        self._access_token = self._normalize_token(access_token)
+    async def _async_access_token(self) -> str:
+        if self._oauth_session is not None:
+            await self._oauth_session.async_ensure_token_valid()
+            token = self._oauth_session.token.get("access_token")
+            if not token:
+                raise IBCAuthError("IBC OAuth session has no access token")
+            return str(token)
+        if not self._access_token:
+            raise IBCAuthError("No IBC access token available")
+        return self._access_token
 
-    async def async_get_meter_day(self, day: date) -> IBCMeterDay:
-        """Fetch one local calendar day in the portal's 15-minute resolution."""
-        url = f"{self.base_url}/meterdatavalues/{self.meteringpoint}"
-        params = {
-            "subject_id": self.subject_id,
-            "role": str(self.role),
-            "date_from": datetime.combine(day, time.min).isoformat(),
-            "date_to": datetime.combine(day, time(23, 59, 59)).isoformat(),
-            "aggregation": str(self.aggregation),
-            "compareActive": "false",
-        }
+    async def _async_request_json(
+        self,
+        path: str,
+        *,
+        params: dict[str, Any] | None = None,
+        settings: bool = False,
+        allow_no_content: bool = False,
+    ) -> Any:
+        token = await self._async_access_token()
+        root = self.settings_url if settings else self.base_url
+        url = f"{root}/{path.lstrip('/')}"
         headers = {
-            "Authorization": f"Bearer {self._access_token}",
+            "Authorization": f"Bearer {token}",
             "Accept": "application/json, text/plain, */*",
+            "Content-Type": "application/json",
         }
-
         try:
             async with self._session.get(
                 url,
@@ -109,8 +122,12 @@ class IBCClient:
             ) as response:
                 if response.status in (401, 403):
                     raise IBCAuthError(f"IBC authentication failed ({response.status})")
+                if response.status == 204 and allow_no_content:
+                    return None
                 response.raise_for_status()
-                payload = await response.json(content_type=None)
+                if response.status == 204:
+                    return None
+                return await response.json(content_type=None)
         except IBCAuthError:
             raise
         except (ClientResponseError, ClientError, TimeoutError) as err:
@@ -118,6 +135,134 @@ class IBCClient:
         except ValueError as err:
             raise IBCDataError("IBC response was not valid JSON") from err
 
+    async def async_get_subject(self, subject_id: str) -> Any:
+        """Return subject metadata."""
+        return await self._async_request_json(
+            f"subject/{subject_id}/",
+            params={"user_component": "false"},
+        )
+
+    async def async_try_list_subjects(self) -> Any | None:
+        """Try collection-style subject endpoints used by some EBP versions."""
+        for path in ("subject/", "subject"):
+            try:
+                data = await self._async_request_json(
+                    path,
+                    params={"user_component": "false"},
+                    allow_no_content=True,
+                )
+            except IBCConnectionError:
+                continue
+            if data is not None:
+                return data
+        return None
+
+    async def async_get_subject_roles(self, subject_id: str) -> Any:
+        """Return role relationships for a subject."""
+        return await self._async_request_json(f"subjectrole/{subject_id}/")
+
+    async def async_get_objects(self, subject_id: str) -> Any:
+        """Return supply objects available to a subject."""
+        return await self._async_request_json(
+            "objects",
+            params={"subject_id": str(subject_id)},
+        )
+
+    async def async_get_contracts(
+        self,
+        object_id: str,
+        subject_id: str,
+        role: int,
+    ) -> Any:
+        """Return contracts for an object."""
+        return await self._async_request_json(
+            f"contracts/{object_id}",
+            params={"subject_id": str(subject_id), "role": str(role)},
+        )
+
+    async def async_get_invoice_categories(self) -> Any:
+        """Return invoice/media categories."""
+        return await self._async_request_json("invoicetypecategory/", settings=True)
+
+    async def async_get_tariff_periods(self) -> Any:
+        """Return tariff period definitions."""
+        return await self._async_request_json("tariffperiod/", settings=True)
+
+    async def async_get_meteringpoints(
+        self,
+        object_id: str,
+        subject_id: str,
+        role: int,
+        invoice_category: int,
+    ) -> Any:
+        """Return metering points for an object and medium."""
+        return await self._async_request_json(
+            f"meteringpoints/{object_id}",
+            params={
+                "subject_id": str(subject_id),
+                "role": str(role),
+                "invoicetypecategory": str(invoice_category),
+            },
+            allow_no_content=True,
+        )
+
+    async def async_get_meteringpoints_evg(self, subject_id: str) -> Any | None:
+        """Return EVG metering points when available."""
+        return await self._async_request_json(
+            "meteringpoints_evg/",
+            params={"subject_id": str(subject_id)},
+            allow_no_content=True,
+        )
+
+    async def async_get_meter_sum(
+        self,
+        meteringpoint: str,
+        subject_id: str,
+        role: int,
+        date_from: datetime,
+        date_to: datetime,
+    ) -> Any:
+        """Return server-side meter sum for a time range."""
+        return await self._async_request_json(
+            f"meterdatasum/{meteringpoint}",
+            params={
+                "subject_id": str(subject_id),
+                "role": str(role),
+                "date_from": date_from.replace(tzinfo=None).isoformat(),
+                "date_to": date_to.replace(tzinfo=None).isoformat(),
+            },
+        )
+
+    async def async_get_open_invoices(self, subject_id: str) -> Any:
+        """Return open invoices for the subject."""
+        return await self._async_request_json(
+            "open_invoices",
+            params={"subject_id": str(subject_id)},
+            allow_no_content=True,
+        )
+
+    async def async_get_open_messages_count(self, subject_id: str) -> Any:
+        """Return the portal's count of open messages."""
+        return await self._async_request_json(
+            f"open_messages_count/{subject_id}/-1",
+            allow_no_content=True,
+        )
+
+    async def async_get_meter_day(self, day: date) -> IBCMeterDay:
+        """Fetch one local calendar day in the portal's 15-minute resolution."""
+        if self.subject_id is None or self.meteringpoint is None:
+            raise IBCDataError("IBC subject or metering point is not configured")
+        payload = await self._async_request_json(
+            f"meterdatavalues/{self.meteringpoint}",
+            params={
+                "subject_id": self.subject_id,
+                "role": str(self.role),
+                "date_from": datetime.combine(day, time.min).isoformat(),
+                "date_to": datetime.combine(day, time(23, 59, 59)).isoformat(),
+                "aggregation": str(self.aggregation),
+                "compareActive": "false",
+            },
+        )
         return self._parse_meter_day(day, payload)
 
     @staticmethod
@@ -135,6 +280,16 @@ class IBCClient:
             if series.get("internal_name") == "ActiveEnergy.Extraction":
                 selected = series
                 break
+        if selected is None:
+            selected = next(
+                (
+                    series
+                    for series in timeseries
+                    if isinstance(series, dict)
+                    and str(series.get("direction", "")).lower() == "in"
+                ),
+                None,
+            )
         if selected is None:
             selected = next(
                 (series for series in timeseries if isinstance(series, dict)), None
@@ -164,11 +319,18 @@ class IBCClient:
         if not points:
             raise IBCDataError("Timeseries contains no valid values")
 
+        points.sort(key=lambda point: point.timestamp)
         return IBCMeterDay(
             requested_day=day,
             points=points,
             unit=str(selected.get("unit") or "kW"),
-            obis=selected.get("obis"),
-            internal_name=selected.get("internal_name"),
-            direction=selected.get("direction"),
+            obis=(str(selected.get("obis")) if selected.get("obis") else None),
+            internal_name=(
+                str(selected.get("internal_name"))
+                if selected.get("internal_name")
+                else None
+            ),
+            direction=(
+                str(selected.get("direction")) if selected.get("direction") else None
+            ),
         )
