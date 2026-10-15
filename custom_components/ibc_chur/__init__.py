@@ -28,7 +28,6 @@ from .const import (
 )
 from .coordinator import IBCDataUpdateCoordinator
 
-
 type IBCConfigEntry = ConfigEntry[IBCDataUpdateCoordinator]
 
 
@@ -39,6 +38,13 @@ async def async_setup(hass: HomeAssistant, config: dict) -> bool:
         DOMAIN,
         ClientCredential(OAUTH_CLIENT_ID, OAUTH_CLIENT_SECRET),
     )
+    return True
+
+
+async def async_migrate_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
+    """Migrate legacy manual-token entries to the current entry version."""
+    if entry.version < 2:
+        hass.config_entries.async_update_entry(entry, version=2)
     return True
 
 
