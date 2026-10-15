@@ -86,9 +86,11 @@ class IBCClient:
             return value[7:].strip()
         return value
 
-    async def _async_access_token(self) -> str:
+    async def _async_access_token(self, *, force_refresh: bool = False) -> str:
         if self._token_manager is not None:
             try:
+                if force_refresh:
+                    return await self._token_manager.async_force_refresh()
                 return await self._token_manager.async_access_token()
             except IBCInvalidAuth as err:
                 raise IBCAuthError(str(err)) from err
@@ -106,45 +108,54 @@ class IBCClient:
         settings: bool = False,
         allow_no_content: bool = False,
     ) -> Any:
-        token = await self._async_access_token()
         root = self.settings_url if settings else self.base_url
         url = f"{root}/{path.lstrip('/')}"
-        headers = {
-            "Authorization": f"Bearer {token}",
-            "Accept": "application/json, text/plain, */*",
-            "Content-Type": "application/json",
-        }
-        try:
-            async with self._session.get(
-                url,
-                params=params,
-                headers=headers,
-                timeout=30,
-            ) as response:
-                if response.status in (401, 403):
-                    raise IBCAuthError(f"IBC authentication failed ({response.status})")
-                if response.status == 204 and allow_no_content:
-                    return None
-                response.raise_for_status()
-                if response.status == 204:
-                    return None
-                return await response.json(content_type=None)
-        except IBCAuthError:
-            raise
-        except (ClientResponseError, ClientError, TimeoutError) as err:
-            raise IBCConnectionError(str(err)) from err
-        except ValueError as err:
-            raise IBCDataError("IBC response was not valid JSON") from err
+
+        for attempt in range(2):
+            token = await self._async_access_token(force_refresh=attempt == 1)
+            headers = {
+                "Authorization": f"Bearer {token}",
+                "Accept": "application/json, text/plain, */*",
+                "Content-Type": "application/json",
+            }
+            try:
+                async with self._session.get(
+                    url,
+                    params=params,
+                    headers=headers,
+                    timeout=30,
+                ) as response:
+                    if (
+                        response.status == 401
+                        and self._token_manager is not None
+                        and attempt == 0
+                    ):
+                        continue
+                    if response.status in (401, 403):
+                        raise IBCAuthError(
+                            f"IBC authentication failed ({response.status})"
+                        )
+                    if response.status == 204:
+                        return None
+                    response.raise_for_status()
+                    return await response.json(content_type=None)
+            except IBCAuthError:
+                raise
+            except (ClientResponseError, ClientError, TimeoutError) as err:
+                raise IBCConnectionError(str(err)) from err
+            except ValueError as err:
+                raise IBCDataError("IBC response was not valid JSON") from err
+
+        if allow_no_content:
+            return None
+        raise IBCAuthError("IBC authentication failed after token refresh")
 
     async def async_get_subject(self, subject_id: str) -> Any:
-        """Return subject metadata."""
         return await self._async_request_json(
-            f"subject/{subject_id}/",
-            params={"user_component": "false"},
+            f"subject/{subject_id}/", params={"user_component": "false"}
         )
 
     async def async_try_list_subjects(self) -> Any | None:
-        """Try collection-style subject endpoints used by some EBP versions."""
         for path in ("subject/", "subject"):
             try:
                 data = await self._async_request_json(
@@ -159,34 +170,23 @@ class IBCClient:
         return None
 
     async def async_get_subject_roles(self, subject_id: str) -> Any:
-        """Return role relationships for a subject."""
         return await self._async_request_json(f"subjectrole/{subject_id}/")
 
     async def async_get_objects(self, subject_id: str) -> Any:
-        """Return supply objects available to a subject."""
         return await self._async_request_json(
-            "objects",
-            params={"subject_id": str(subject_id)},
+            "objects", params={"subject_id": str(subject_id)}
         )
 
-    async def async_get_contracts(
-        self,
-        object_id: str,
-        subject_id: str,
-        role: int,
-    ) -> Any:
-        """Return contracts for an object."""
+    async def async_get_contracts(self, object_id: str, subject_id: str, role: int) -> Any:
         return await self._async_request_json(
             f"contracts/{object_id}",
             params={"subject_id": str(subject_id), "role": str(role)},
         )
 
     async def async_get_invoice_categories(self) -> Any:
-        """Return invoice/media categories."""
         return await self._async_request_json("invoicetypecategory/", settings=True)
 
     async def async_get_tariff_periods(self) -> Any:
-        """Return tariff period definitions."""
         return await self._async_request_json("tariffperiod/", settings=True)
 
     async def async_get_meteringpoints(
@@ -196,7 +196,6 @@ class IBCClient:
         role: int,
         invoice_category: int,
     ) -> Any:
-        """Return metering points for an object and medium."""
         return await self._async_request_json(
             f"meteringpoints/{object_id}",
             params={
@@ -208,7 +207,6 @@ class IBCClient:
         )
 
     async def async_get_meteringpoints_evg(self, subject_id: str) -> Any | None:
-        """Return EVG metering points when available."""
         return await self._async_request_json(
             "meteringpoints_evg/",
             params={"subject_id": str(subject_id)},
@@ -223,7 +221,6 @@ class IBCClient:
         date_from: datetime,
         date_to: datetime,
     ) -> Any:
-        """Return server-side meter sum for a time range."""
         return await self._async_request_json(
             f"meterdatasum/{meteringpoint}",
             params={
@@ -232,10 +229,10 @@ class IBCClient:
                 "date_from": date_from.replace(tzinfo=None).isoformat(),
                 "date_to": date_to.replace(tzinfo=None).isoformat(),
             },
+            allow_no_content=True,
         )
 
     async def async_get_open_invoices(self, subject_id: str) -> Any:
-        """Return open invoices for the subject."""
         return await self._async_request_json(
             "open_invoices",
             params={"subject_id": str(subject_id)},
@@ -243,14 +240,11 @@ class IBCClient:
         )
 
     async def async_get_open_messages_count(self, subject_id: str) -> Any:
-        """Return the portal's count of open messages."""
         return await self._async_request_json(
-            f"open_messages_count/{subject_id}/-1",
-            allow_no_content=True,
+            f"open_messages_count/{subject_id}/-1", allow_no_content=True
         )
 
     async def async_get_meter_day(self, day: date) -> IBCMeterDay:
-        """Fetch one local calendar day in the portal's 15-minute resolution."""
         if self.subject_id is None or self.meteringpoint is None:
             raise IBCDataError("IBC subject or metering point is not configured")
         payload = await self._async_request_json(
@@ -263,24 +257,47 @@ class IBCClient:
                 "aggregation": str(self.aggregation),
                 "compareActive": "false",
             },
+            allow_no_content=True,
         )
         return self._parse_meter_day(day, payload)
 
     @staticmethod
-    def _parse_meter_day(day: date, payload: Any) -> IBCMeterDay:
-        if not isinstance(payload, dict):
-            raise IBCDataError("Expected a JSON object")
-        timeseries = payload.get("timeseries")
-        if not isinstance(timeseries, list) or not timeseries:
-            raise IBCDataError("No timeseries returned")
+    def _empty_meter_day(day: date) -> IBCMeterDay:
+        return IBCMeterDay(day, [], "kW", None, None, None)
 
-        selected: dict[str, Any] | None = None
-        for series in timeseries:
-            if not isinstance(series, dict):
-                continue
-            if series.get("internal_name") == "ActiveEnergy.Extraction":
-                selected = series
-                break
+    @classmethod
+    def _parse_meter_day(cls, day: date, payload: Any) -> IBCMeterDay:
+        if payload is None:
+            return cls._empty_meter_day(day)
+        if isinstance(payload, list):
+            if not payload:
+                return cls._empty_meter_day(day)
+            if all(isinstance(item, dict) for item in payload):
+                timeseries = payload
+            else:
+                raise IBCDataError(f"Unexpected meter payload list for {day.isoformat()}")
+        elif isinstance(payload, dict):
+            timeseries = payload.get("timeseries")
+            if timeseries in (None, []):
+                return cls._empty_meter_day(day)
+            if not isinstance(timeseries, list):
+                raise IBCDataError(
+                    f"Unexpected timeseries type for {day.isoformat()}: {type(timeseries).__name__}"
+                )
+        else:
+            raise IBCDataError(
+                f"Unexpected meter payload type for {day.isoformat()}: {type(payload).__name__}"
+            )
+
+        selected = next(
+            (
+                series
+                for series in timeseries
+                if isinstance(series, dict)
+                and series.get("internal_name") == "ActiveEnergy.Extraction"
+            ),
+            None,
+        )
         if selected is None:
             selected = next(
                 (
@@ -292,15 +309,22 @@ class IBCClient:
                 None,
             )
         if selected is None:
-            selected = next(
-                (series for series in timeseries if isinstance(series, dict)), None
-            )
+            selected = next((s for s in timeseries if isinstance(s, dict)), None)
         if selected is None:
-            raise IBCDataError("No usable timeseries returned")
+            return cls._empty_meter_day(day)
 
         raw_points = selected.get("data")
+        if raw_points in (None, []):
+            return IBCMeterDay(
+                day,
+                [],
+                str(selected.get("unit") or "kW"),
+                str(selected.get("obis")) if selected.get("obis") else None,
+                str(selected.get("internal_name")) if selected.get("internal_name") else None,
+                str(selected.get("direction")) if selected.get("direction") else None,
+            )
         if not isinstance(raw_points, list):
-            raise IBCDataError("Timeseries has no data array")
+            raise IBCDataError(f"Timeseries data is not a list for {day.isoformat()}")
 
         points: list[IBCPowerPoint] = []
         for raw in raw_points:
@@ -315,23 +339,16 @@ class IBCClient:
                 parsed_value = float(value)
             except (TypeError, ValueError):
                 continue
+            if parsed_timestamp.tzinfo is None:
+                raise IBCDataError(f"Meter timestamp has no timezone for {day.isoformat()}")
             points.append(IBCPowerPoint(parsed_timestamp, parsed_value))
-
-        if not points:
-            raise IBCDataError("Timeseries contains no valid values")
 
         points.sort(key=lambda point: point.timestamp)
         return IBCMeterDay(
-            requested_day=day,
-            points=points,
-            unit=str(selected.get("unit") or "kW"),
-            obis=(str(selected.get("obis")) if selected.get("obis") else None),
-            internal_name=(
-                str(selected.get("internal_name"))
-                if selected.get("internal_name")
-                else None
-            ),
-            direction=(
-                str(selected.get("direction")) if selected.get("direction") else None
-            ),
+            day,
+            points,
+            str(selected.get("unit") or "kW"),
+            str(selected.get("obis")) if selected.get("obis") else None,
+            str(selected.get("internal_name")) if selected.get("internal_name") else None,
+            str(selected.get("direction")) if selected.get("direction") else None,
         )
