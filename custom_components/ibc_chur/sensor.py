@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from collections.abc import Callable
 from dataclasses import dataclass
-from datetime import datetime
+from datetime import date, datetime
 from typing import Any
 
 from homeassistant.components.sensor import (
@@ -14,7 +14,7 @@ from homeassistant.components.sensor import (
     SensorStateClass,
 )
 from homeassistant.config_entries import ConfigEntry
-from homeassistant.const import UnitOfEnergy, UnitOfPower
+from homeassistant.const import UnitOfEnergy, UnitOfPower, UnitOfTime
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers.device_registry import DeviceInfo
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
@@ -42,6 +42,14 @@ SENSORS: tuple[IBCSensorEntityDescription, ...] = (
         value_fn=lambda data: data.latest_power_kw,
     ),
     IBCSensorEntityDescription(
+        key="latest_day_energy",
+        translation_key="latest_day_energy",
+        native_unit_of_measurement=UnitOfEnergy.KILO_WATT_HOUR,
+        device_class=SensorDeviceClass.ENERGY,
+        suggested_display_precision=3,
+        value_fn=lambda data: data.latest_day_energy_kwh,
+    ),
+    IBCSensorEntityDescription(
         key="yesterday_energy",
         translation_key="yesterday_energy",
         native_unit_of_measurement=UnitOfEnergy.KILO_WATT_HOUR,
@@ -50,10 +58,35 @@ SENSORS: tuple[IBCSensorEntityDescription, ...] = (
         value_fn=lambda data: data.yesterday_energy_kwh,
     ),
     IBCSensorEntityDescription(
+        key="last_7_days_energy",
+        translation_key="last_7_days_energy",
+        native_unit_of_measurement=UnitOfEnergy.KILO_WATT_HOUR,
+        device_class=SensorDeviceClass.ENERGY,
+        suggested_display_precision=2,
+        value_fn=lambda data: data.last_7_days_energy_kwh,
+    ),
+    IBCSensorEntityDescription(
+        key="month_energy",
+        translation_key="month_energy",
+        native_unit_of_measurement=UnitOfEnergy.KILO_WATT_HOUR,
+        device_class=SensorDeviceClass.ENERGY,
+        suggested_display_precision=2,
+        value_fn=lambda data: data.month_energy_kwh,
+    ),
+    IBCSensorEntityDescription(
         key="last_measurement",
         translation_key="last_measurement",
         device_class=SensorDeviceClass.TIMESTAMP,
         value_fn=lambda data: data.latest_timestamp,
+    ),
+    IBCSensorEntityDescription(
+        key="data_age",
+        translation_key="data_age",
+        native_unit_of_measurement=UnitOfTime.HOURS,
+        device_class=SensorDeviceClass.DURATION,
+        state_class=SensorStateClass.MEASUREMENT,
+        suggested_display_precision=1,
+        value_fn=lambda data: data.data_age_hours,
     ),
 )
 
@@ -64,7 +97,9 @@ async def async_setup_entry(
     async_add_entities: AddEntitiesCallback,
 ) -> None:
     coordinator: IBCDataUpdateCoordinator = hass.data[DOMAIN][entry.entry_id]
-    async_add_entities(IBCSensor(coordinator, entry, description) for description in SENSORS)
+    async_add_entities(
+        IBCSensor(coordinator, entry, description) for description in SENSORS
+    )
 
 
 class IBCSensor(CoordinatorEntity[IBCDataUpdateCoordinator], SensorEntity):
@@ -91,21 +126,34 @@ class IBCSensor(CoordinatorEntity[IBCDataUpdateCoordinator], SensorEntity):
         )
 
     @property
-    def native_value(self) -> float | datetime | None:
+    def native_value(self) -> float | datetime | date | None:
         if self.coordinator.data is None:
             return None
         return self.entity_description.value_fn(self.coordinator.data)
 
     @property
     def extra_state_attributes(self) -> dict[str, Any] | None:
-        if self.entity_description.key != "yesterday_energy" or self.coordinator.data is None:
+        data = self.coordinator.data
+        if data is None:
             return None
-        return {
-            "statistic_id": self.coordinator.data.statistic_id,
-            "imported_samples_last_refresh": self.coordinator.data.imported_samples,
-            "last_imported_day": (
-                self.coordinator.data.last_imported_day.isoformat()
-                if self.coordinator.data.last_imported_day
-                else None
-            ),
+
+        common = {
+            "statistic_id": data.statistic_id,
+            "latest_complete_day": data.latest_day.isoformat() if data.latest_day else None,
+            "latest_measurement": data.latest_timestamp.isoformat() if data.latest_timestamp else None,
         }
+        if self.entity_description.key in {
+            "latest_day_energy",
+            "yesterday_energy",
+            "last_7_days_energy",
+            "month_energy",
+        }:
+            return {
+                **common,
+                "tracked_energy_kwh": data.tracked_energy_kwh,
+                "imported_hourly_statistics_last_refresh": data.imported_samples,
+                "last_imported_day": data.last_imported_day.isoformat() if data.last_imported_day else None,
+            }
+        if self.entity_description.key in {"latest_power", "data_age"}:
+            return common
+        return None
