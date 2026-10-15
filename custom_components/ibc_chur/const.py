@@ -23,10 +23,8 @@ OIDC_DISCOVERY_URL = (
     "https://login.ibc-chur.ch/auth/realms/ibc/.well-known/openid-configuration"
 )
 OAUTH_CLIENT_ID = "ebp-pkce"
-OAUTH_CLIENT_SECRET = ""
 OAUTH_SCOPE = "openid profile email"
 OAUTH_REDIRECT_URI = "https://portal.ibc-chur.ch/?kcCallback=1"
-OAUTH_REDIRECT_CANDIDATES = (OAUTH_REDIRECT_URI,)
 OAUTH_LOCALE = "de"
 
 DEFAULT_ROLE = 2
