@@ -26,6 +26,7 @@ from homeassistant.helpers.selector import (
 )
 
 from .api import IBCClient, IBCConnectionError, IBCDataError
+from .application_credentials import async_get_fixed_implementation
 from .const import (
     CONF_AGGREGATION,
     CONF_HISTORY_DAYS,
@@ -84,6 +85,14 @@ class IBCChurConfigFlow(
     def extra_authorize_data(self) -> dict[str, Any]:
         """Match the scopes observed in the IBC customer portal."""
         return {"scope": OAUTH_SCOPE}
+
+    async def async_step_user(self, user_input: dict[str, Any] | None = None):
+        """Ensure the fixed public IBC client is registered before OAuth starts."""
+        implementation = await async_get_fixed_implementation(self.hass)
+        config_entry_oauth2_flow.async_register_implementation(
+            self.hass, DOMAIN, implementation
+        )
+        return await super().async_step_user(user_input)
 
     async def async_oauth_create_entry(self, data: dict[str, Any]):
         """Continue with IBC account discovery after OAuth callback."""
