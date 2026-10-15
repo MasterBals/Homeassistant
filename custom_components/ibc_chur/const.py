@@ -25,6 +25,12 @@ OIDC_DISCOVERY_URL = (
 OAUTH_CLIENT_ID = "ebp-pkce"
 OAUTH_CLIENT_SECRET = ""
 OAUTH_SCOPE = "openid profile email"
+OAUTH_REDIRECT_CANDIDATES = (
+    "https://portal.ibc-chur.ch/",
+    "https://portal.ibc-chur.ch/ebp",
+    "https://portal.ibc-chur.ch/ebp/",
+    "https://portal.ibc-chur.ch/ebp/consumption/meterdata",
+)
 
 DEFAULT_ROLE = 2
 DEFAULT_INVOICE_CATEGORY = 1

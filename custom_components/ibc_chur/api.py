@@ -7,8 +7,8 @@ from datetime import date, datetime, time
 from typing import Any
 
 from aiohttp import ClientError, ClientResponseError, ClientSession
-from homeassistant.helpers.config_entry_oauth2_flow import OAuth2Session
 
+from .auth import IBCAuthConnectionError, IBCInvalidAuth, IBCTokenManager
 from .const import DEFAULT_BASE_URL, DEFAULT_SETTINGS_URL
 
 
@@ -60,7 +60,7 @@ class IBCClient:
         self,
         session: ClientSession,
         *,
-        oauth_session: OAuth2Session | None = None,
+        token_manager: IBCTokenManager | None = None,
         access_token: str | None = None,
         subject_id: str | None = None,
         meteringpoint: str | None = None,
@@ -70,7 +70,7 @@ class IBCClient:
         settings_url: str = DEFAULT_SETTINGS_URL,
     ) -> None:
         self._session = session
-        self._oauth_session = oauth_session
+        self._token_manager = token_manager
         self._access_token = self._normalize_token(access_token or "")
         self.subject_id = str(subject_id) if subject_id is not None else None
         self.meteringpoint = str(meteringpoint) if meteringpoint is not None else None
@@ -87,12 +87,13 @@ class IBCClient:
         return value
 
     async def _async_access_token(self) -> str:
-        if self._oauth_session is not None:
-            await self._oauth_session.async_ensure_token_valid()
-            token = self._oauth_session.token.get("access_token")
-            if not token:
-                raise IBCAuthError("IBC OAuth session has no access token")
-            return str(token)
+        if self._token_manager is not None:
+            try:
+                return await self._token_manager.async_access_token()
+            except IBCInvalidAuth as err:
+                raise IBCAuthError(str(err)) from err
+            except IBCAuthConnectionError as err:
+                raise IBCConnectionError(str(err)) from err
         if not self._access_token:
             raise IBCAuthError("No IBC access token available")
         return self._access_token

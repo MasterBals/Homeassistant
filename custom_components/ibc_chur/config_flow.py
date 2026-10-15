@@ -11,9 +11,8 @@ from typing import Any
 
 import voluptuous as vol
 from homeassistant import config_entries
-from homeassistant.config_entries import SOURCE_REAUTH
+from homeassistant.const import CONF_PASSWORD, CONF_USERNAME
 from homeassistant.core import callback
-from homeassistant.helpers import config_entry_oauth2_flow
 from homeassistant.helpers.aiohttp_client import async_get_clientsession
 from homeassistant.helpers.selector import (
     NumberSelector,
@@ -23,10 +22,17 @@ from homeassistant.helpers.selector import (
     SelectSelectorConfig,
     SelectSelectorMode,
     TextSelector,
+    TextSelectorConfig,
+    TextSelectorType,
 )
 
 from .api import IBCClient, IBCConnectionError, IBCDataError
-from .application_credentials import async_get_fixed_implementation
+from .auth import (
+    IBCAuthConnectionError,
+    IBCAuthenticator,
+    IBCAuthUnsupported,
+    IBCInvalidAuth,
+)
 from .const import (
     CONF_AGGREGATION,
     CONF_HISTORY_DAYS,
@@ -40,7 +46,6 @@ from .const import (
     DEFAULT_INVOICE_CATEGORY,
     DEFAULT_ROLE,
     DOMAIN,
-    OAUTH_SCOPE,
 )
 
 _LOGGER = logging.getLogger(__name__)
@@ -56,17 +61,14 @@ _SUBJECT_KEYS = {
 }
 
 
-class IBCChurConfigFlow(
-    config_entry_oauth2_flow.AbstractOAuth2FlowHandler, domain=DOMAIN
-):
-    """Handle IBC OAuth login and account discovery."""
+class IBCChurConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
+    """Handle IBC login and account discovery."""
 
-    DOMAIN = DOMAIN
-    VERSION = 2
+    VERSION = 3
 
     def __init__(self) -> None:
         """Initialize flow state."""
-        self._oauth_data: dict[str, Any] | None = None
+        self._auth_data: dict[str, Any] | None = None
         self._subject_id: str | None = None
         self._role: int = DEFAULT_ROLE
         self._object_id: str | None = None
@@ -76,43 +78,50 @@ class IBCChurConfigFlow(
         self._roles: list[int] = []
         self._meteringpoints: dict[str, tuple[int, str]] = {}
 
-    @property
-    def logger(self) -> logging.Logger:
-        """Return logger for Home Assistant OAuth helper."""
-        return _LOGGER
-
-    @property
-    def extra_authorize_data(self) -> dict[str, Any]:
-        """Match the scopes observed in the IBC customer portal."""
-        return {"scope": OAUTH_SCOPE}
-
     async def async_step_user(self, user_input: dict[str, Any] | None = None):
-        """Ensure the fixed public IBC client is registered before OAuth starts."""
-        implementation = await async_get_fixed_implementation(self.hass)
-        config_entry_oauth2_flow.async_register_implementation(
-            self.hass, DOMAIN, implementation
+        """Log in to IBC and continue with automatic account discovery."""
+        errors: dict[str, str] = {}
+        if user_input is not None:
+            username = str(user_input[CONF_USERNAME]).strip()
+            password = str(user_input[CONF_PASSWORD])
+            session = async_get_clientsession(self.hass)
+            authenticator = IBCAuthenticator(session)
+            try:
+                token = await authenticator.async_login(username, password)
+            except IBCInvalidAuth:
+                errors["base"] = "invalid_auth"
+            except IBCAuthConnectionError:
+                errors["base"] = "cannot_connect"
+            except IBCAuthUnsupported:
+                errors["base"] = "auth_unsupported"
+            except Exception:
+                _LOGGER.exception("Unexpected error during IBC authentication")
+                errors["base"] = "unknown"
+            else:
+                self._auth_data = {
+                    "token": token,
+                    CONF_USERNAME: username,
+                }
+                access_token = str(token.get("access_token", ""))
+                self._client = IBCClient(session, access_token=access_token)
+                return await self._async_after_login(access_token)
+
+        return self.async_show_form(
+            step_id="user",
+            data_schema=vol.Schema(
+                {
+                    vol.Required(CONF_USERNAME): TextSelector(),
+                    vol.Required(CONF_PASSWORD): TextSelector(
+                        TextSelectorConfig(type=TextSelectorType.PASSWORD)
+                    ),
+                }
+            ),
+            errors=errors,
         )
-        return await super().async_step_user(user_input)
 
-    async def async_oauth_create_entry(self, data: dict[str, Any]):
-        """Continue with IBC account discovery after OAuth callback."""
-        if self.source == SOURCE_REAUTH:
-            entry = self._get_reauth_entry()
-            return self.async_update_reload_and_abort(
-                entry,
-                data_updates={
-                    "token": data.get("token"),
-                    "auth_implementation": data.get("auth_implementation"),
-                },
-            )
-
-        self._oauth_data = data
-        access_token = str(data.get("token", {}).get("access_token", ""))
-        self._client = IBCClient(
-            async_get_clientsession(self.hass),
-            access_token=access_token,
-        )
-
+    async def _async_after_login(self, access_token: str):
+        """Discover the IBC subject after a successful token exchange."""
+        assert self._client is not None
         subjects = _subjects_from_token(access_token)
         try:
             listed = await self._client.async_try_list_subjects()
@@ -307,7 +316,7 @@ class IBCChurConfigFlow(
     async def _async_finish(self, meteringpoint: str):
         """Validate the selected metering point and create the config entry."""
         assert self._client is not None
-        assert self._oauth_data is not None
+        assert self._auth_data is not None
         assert self._subject_id is not None
         assert self._object_id is not None
 
@@ -320,7 +329,7 @@ class IBCChurConfigFlow(
         self._abort_if_unique_id_configured()
 
         data = {
-            **self._oauth_data,
+            **self._auth_data,
             CONF_SUBJECT_ID: self._subject_id,
             CONF_ROLE: self._role,
             CONF_OBJECT_ID: self._object_id,
@@ -334,19 +343,54 @@ class IBCChurConfigFlow(
         return self.async_create_entry(title=title, data=data)
 
     async def async_step_reauth(self, entry_data: Mapping[str, Any]):
-        """Start OAuth reauthentication."""
+        """Start native IBC reauthentication."""
         return await self.async_step_reauth_confirm()
 
     async def async_step_reauth_confirm(
         self, user_input: dict[str, Any] | None = None
     ):
-        """Confirm reauthentication before redirecting to IBC login."""
-        if user_input is None:
-            return self.async_show_form(
-                step_id="reauth_confirm",
-                data_schema=vol.Schema({}),
-            )
-        return await self.async_step_user()
+        """Ask for IBC credentials again when the refresh token expires."""
+        entry = self._get_reauth_entry()
+        errors: dict[str, str] = {}
+        if user_input is not None:
+            username = str(user_input[CONF_USERNAME]).strip()
+            password = str(user_input[CONF_PASSWORD])
+            authenticator = IBCAuthenticator(async_get_clientsession(self.hass))
+            try:
+                token = await authenticator.async_login(username, password)
+            except IBCInvalidAuth:
+                errors["base"] = "invalid_auth"
+            except IBCAuthConnectionError:
+                errors["base"] = "cannot_connect"
+            except IBCAuthUnsupported:
+                errors["base"] = "auth_unsupported"
+            except Exception:
+                _LOGGER.exception("Unexpected error during IBC reauthentication")
+                errors["base"] = "unknown"
+            else:
+                return self.async_update_reload_and_abort(
+                    entry,
+                    data_updates={
+                        "token": token,
+                        CONF_USERNAME: username,
+                    },
+                )
+
+        return self.async_show_form(
+            step_id="reauth_confirm",
+            data_schema=vol.Schema(
+                {
+                    vol.Required(
+                        CONF_USERNAME,
+                        default=str(entry.data.get(CONF_USERNAME, "")),
+                    ): TextSelector(),
+                    vol.Required(CONF_PASSWORD): TextSelector(
+                        TextSelectorConfig(type=TextSelectorType.PASSWORD)
+                    ),
+                }
+            ),
+            errors=errors,
+        )
 
     @staticmethod
     @callback

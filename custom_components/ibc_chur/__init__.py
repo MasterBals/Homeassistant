@@ -4,11 +4,10 @@ from __future__ import annotations
 
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant
-from homeassistant.helpers import config_entry_oauth2_flow
 from homeassistant.helpers.aiohttp_client import async_get_clientsession
 
 from .api import IBCClient
-from .application_credentials import async_get_fixed_implementation
+from .auth import IBCTokenManager
 from .const import (
     CONF_AGGREGATION,
     CONF_HISTORY_DAYS,
@@ -26,49 +25,32 @@ from .coordinator import IBCDataUpdateCoordinator
 type IBCConfigEntry = ConfigEntry[IBCDataUpdateCoordinator]
 
 
-async def _async_register_fixed_oauth(hass: HomeAssistant) -> None:
-    """Register the public OAuth/PKCE implementation used by the IBC portal."""
-    implementation = await async_get_fixed_implementation(hass)
-    config_entry_oauth2_flow.async_register_implementation(
-        hass, DOMAIN, implementation
-    )
-
-
 async def async_setup(hass: HomeAssistant, config: dict) -> bool:
-    """Set up the IBC integration and its public OAuth client."""
-    await _async_register_fixed_oauth(hass)
+    """Set up the IBC integration."""
     return True
 
 
 async def async_migrate_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
-    """Migrate legacy manual-token entries to the current entry version."""
-    if entry.version < 2:
-        hass.config_entries.async_update_entry(entry, version=2)
+    """Migrate older IBC entries to the native token-manager format."""
+    if entry.version < 3:
+        hass.config_entries.async_update_entry(entry, version=3)
     return True
 
 
 async def async_setup_entry(hass: HomeAssistant, entry: IBCConfigEntry) -> bool:
     """Set up IBC Chur from a config entry."""
-    await _async_register_fixed_oauth(hass)
     config = {**entry.data, **entry.options}
+    session = async_get_clientsession(hass)
 
-    oauth_session = None
-    legacy_access_token = config.get("access_token")
-    if "token" in entry.data:
-        implementation = (
-            await config_entry_oauth2_flow.async_get_config_entry_implementation(
-                hass, entry
-            )
-        )
-        oauth_session = config_entry_oauth2_flow.OAuth2Session(
-            hass, entry, implementation
-        )
-        await oauth_session.async_ensure_token_valid()
+    token_manager = None
+    token = entry.data.get("token")
+    if isinstance(token, dict) and token.get("access_token"):
+        token_manager = IBCTokenManager(hass, entry, session)
 
     client = IBCClient(
-        async_get_clientsession(hass),
-        oauth_session=oauth_session,
-        access_token=legacy_access_token,
+        session,
+        token_manager=token_manager,
+        access_token=config.get("access_token"),
         subject_id=config[CONF_SUBJECT_ID],
         meteringpoint=config[CONF_METERINGPOINT],
         role=config.get(CONF_ROLE, DEFAULT_ROLE),
