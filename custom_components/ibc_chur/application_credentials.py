@@ -25,7 +25,7 @@ async def _async_get_discovery(hass: HomeAssistant) -> dict[str, Any]:
         response.raise_for_status()
         data = await response.json(content_type=None)
     if not isinstance(data, dict):
-        raise ValueError("IBC OIDC discovery did not return a JSON object")
+        raise TypeError("IBC OIDC discovery did not return a JSON object")
     return data
 
 
