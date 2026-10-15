@@ -10,16 +10,7 @@ from homeassistant.core import HomeAssistant
 
 from .const import DOMAIN
 
-_SENSITIVE_KEYS = {
-    "access_token",
-    "refresh_token",
-    "id_token",
-    "token",
-    "authorization",
-    "client_secret",
-    "password",
-    "username",
-}
+_SENSITIVE_KEYS = {"access_token", "refresh_token", "id_token", "token", "authorization", "client_secret", "password", "username"}
 
 
 def _redact(value: Any, key: str | None = None) -> Any:
@@ -33,9 +24,7 @@ def _redact(value: Any, key: str | None = None) -> Any:
     return value
 
 
-async def async_get_config_entry_diagnostics(
-    hass: HomeAssistant, entry: ConfigEntry
-) -> dict:
+async def async_get_config_entry_diagnostics(hass: HomeAssistant, entry: ConfigEntry) -> dict:
     """Return strictly redacted diagnostics."""
     coordinator = hass.data[DOMAIN][entry.entry_id]
     data = coordinator.data
@@ -47,11 +36,7 @@ async def async_get_config_entry_diagnostics(
         "last_update_success": coordinator.last_update_success,
         "data": {
             "latest_power_kw": data.latest_power_kw if data else None,
-            "latest_timestamp": (
-                data.latest_timestamp.isoformat()
-                if data and data.latest_timestamp
-                else None
-            ),
+            "latest_timestamp": data.latest_timestamp.isoformat() if data and data.latest_timestamp else None,
             "latest_day": data.latest_day.isoformat() if data and data.latest_day else None,
             "latest_day_energy_kwh": data.latest_day_energy_kwh if data else None,
             "yesterday_energy_kwh": data.yesterday_energy_kwh if data else None,
@@ -65,6 +50,7 @@ async def async_get_config_entry_diagnostics(
             "peak_15m_kw": data.peak_15m_kw if data else None,
             "projected_month_energy_kwh": data.projected_month_energy_kwh if data else None,
             "projected_month_cost_chf": data.projected_month_cost_chf if data else None,
+            "submeter_correlation_count": len(data.submeter_correlations) if data else 0,
             "tariff_product": data.tariff_product if data else None,
             "tariff_group": data.tariff_group if data else None,
             "tariff_meter_type": data.tariff_meter_type if data else None,
@@ -74,11 +60,7 @@ async def async_get_config_entry_diagnostics(
             "data_age_hours": data.data_age_hours if data else None,
             "tracked_energy_kwh": data.tracked_energy_kwh if data else None,
             "tracked_cost_chf": data.tracked_cost_chf if data else None,
-            "last_imported_day": (
-                data.last_imported_day.isoformat()
-                if data and data.last_imported_day
-                else None
-            ),
+            "last_imported_day": data.last_imported_day.isoformat() if data and data.last_imported_day else None,
             "imported_samples": data.imported_samples if data else 0,
             "imported_cost_samples": data.imported_cost_samples if data else 0,
         },
