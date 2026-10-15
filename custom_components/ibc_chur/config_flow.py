@@ -3,11 +3,13 @@
 from __future__ import annotations
 
 import base64
+from collections.abc import Mapping
 import json
 import logging
 import re
-from typing import Any, Mapping
+from typing import Any
 
+import voluptuous as vol
 from homeassistant import config_entries
 from homeassistant.config_entries import SOURCE_REAUTH
 from homeassistant.core import callback
@@ -22,7 +24,6 @@ from homeassistant.helpers.selector import (
     SelectSelectorMode,
     TextSelector,
 )
-import voluptuous as vol
 
 from .api import IBCClient, IBCConnectionError, IBCDataError
 from .const import (
