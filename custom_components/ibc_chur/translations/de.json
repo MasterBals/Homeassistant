@@ -1,0 +1,57 @@
+{
+  "title": "IBC Energie Wasser Chur",
+  "config": {
+    "step": {
+      "user": {
+        "title": "IBC Kundenportal verbinden",
+        "description": "Verbindet den 15-Minuten-Lastgang des IBC-Kundenportals mit Home Assistant. Der Bearer-Token wird nur lokal in Home Assistant gespeichert.",
+        "data": {
+          "access_token": "Bearer-Token",
+          "subject_id": "Subject-ID",
+          "meteringpoint": "Messpunkt-ID",
+          "role": "Rolle",
+          "aggregation": "Aggregation",
+          "history_days": "Historie beim ersten Import (Tage)"
+        }
+      },
+      "reauth_confirm": {
+        "title": "IBC erneut authentifizieren",
+        "description": "Der bisherige IBC-Token ist abgelaufen. Hinterlege einen neuen Bearer-Token.",
+        "data": {
+          "access_token": "Bearer-Token"
+        }
+      }
+    },
+    "error": {
+      "invalid_auth": "Der Bearer-Token ist ungültig oder abgelaufen.",
+      "cannot_connect": "Das IBC-Portal konnte nicht abgefragt werden oder lieferte keine Messdaten.",
+      "unknown": "Unerwarteter Fehler. Details stehen im Home-Assistant-Protokoll."
+    },
+    "abort": {
+      "already_configured": "Dieser IBC-Messpunkt ist bereits eingerichtet.",
+      "reauth_successful": "IBC wurde erfolgreich erneut authentifiziert."
+    }
+  },
+  "options": {
+    "step": {
+      "init": {
+        "title": "IBC Einstellungen",
+        "data": {
+          "access_token": "Bearer-Token",
+          "history_days": "Historie beim ersten Import (Tage)"
+        }
+      }
+    },
+    "error": {
+      "invalid_auth": "Der Bearer-Token ist ungültig oder abgelaufen.",
+      "cannot_connect": "Das IBC-Portal konnte nicht abgefragt werden oder lieferte keine Messdaten."
+    }
+  },
+  "entity": {
+    "sensor": {
+      "latest_power": {"name": "Letzte 15-Minuten-Leistung"},
+      "yesterday_energy": {"name": "Verbrauch gestern"},
+      "last_measurement": {"name": "Letzte Messung"}
+    }
+  }
+}

@@ -1,0 +1,11 @@
+{
+  "domain": "ibc_chur",
+  "name": "IBC Energie Wasser Chur",
+  "codeowners": ["@MasterBals"],
+  "config_flow": true,
+  "documentation": "https://github.com/MasterBals/Homeassistant/tree/main/custom_components/ibc_chur",
+  "iot_class": "cloud_polling",
+  "issue_tracker": "https://github.com/MasterBals/Homeassistant/issues",
+  "requirements": [],
+  "version": "0.1.0"
+}
