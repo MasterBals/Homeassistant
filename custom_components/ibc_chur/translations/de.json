@@ -78,12 +78,27 @@
   "entity": {
     "sensor": {
       "latest_power": {"name": "Letzte 15-Minuten-Leistung"},
-      "latest_day_energy": {"name": "Verbrauch letzter verfügbarer Tag"},
+      "latest_day_energy": {"name": "Verbrauch letzter vollständiger Tag"},
       "yesterday_energy": {"name": "Verbrauch gestern"},
       "last_7_days_energy": {"name": "Verbrauch letzte 7 Tage"},
       "month_energy": {"name": "Verbrauch laufender Monat"},
+      "avg_day_7d": {"name": "Tagesdurchschnitt 7 Tage"},
+      "avg_day_30d": {"name": "Tagesdurchschnitt 30 Tage"},
+      "trend_7d": {"name": "Trend 7 Tage gegenüber Vorwoche"},
+      "estimated_annual_energy": {"name": "Hochrechnung Jahresverbrauch"},
+      "base_load": {"name": "Geschätzte Grundlast"},
+      "base_load_cost_year": {"name": "Geschätzte Grundlastkosten pro Jahr"},
+      "night_share": {"name": "Nachtverbrauch 00-06 Uhr"},
+      "peak_15m": {"name": "Höchste 15-Minuten-Leistung"},
+      "peak_hour": {"name": "Höchster Stundenverbrauch"},
+      "projected_month_energy": {"name": "Prognose Monatsverbrauch"},
+      "latest_day_cost": {"name": "Kosten letzter vollständiger Tag"},
+      "month_cost": {"name": "Kosten laufender Monat"},
+      "projected_month_cost": {"name": "Prognose Monatskosten"},
+      "variable_price": {"name": "Variabler Strompreis inkl. MwSt."},
       "last_measurement": {"name": "Letzte Messung"},
-      "data_age": {"name": "Datenalter"}
+      "data_age": {"name": "Datenalter"},
+      "analysis": {"name": "Verbrauchsanalyse"}
     }
   }
 }
