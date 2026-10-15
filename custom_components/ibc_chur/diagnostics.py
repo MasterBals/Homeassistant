@@ -2,20 +2,41 @@
 
 from __future__ import annotations
 
+from copy import deepcopy
+from typing import Any
+
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant
 
-from .const import CONF_ACCESS_TOKEN, DOMAIN
+from .const import DOMAIN
+
+_SENSITIVE_KEYS = {
+    "access_token",
+    "refresh_token",
+    "id_token",
+    "token",
+    "authorization",
+    "client_secret",
+}
+
+
+def _redact(value: Any, key: str | None = None) -> Any:
+    """Recursively remove authentication material from diagnostics."""
+    if key is not None and key.lower() in _SENSITIVE_KEYS:
+        return "**REDACTED**"
+    if isinstance(value, dict):
+        return {str(k): _redact(v, str(k)) for k, v in value.items()}
+    if isinstance(value, list):
+        return [_redact(item) for item in value]
+    return value
 
 
 async def async_get_config_entry_diagnostics(
     hass: HomeAssistant, entry: ConfigEntry
 ) -> dict:
-    """Return redacted diagnostics."""
+    """Return strictly redacted diagnostics."""
     coordinator = hass.data[DOMAIN][entry.entry_id]
-    config = {**entry.data, **entry.options}
-    if CONF_ACCESS_TOKEN in config:
-        config[CONF_ACCESS_TOKEN] = "**REDACTED**"
+    config = _redact(deepcopy({**entry.data, **entry.options}))
     return {
         "config": config,
         "statistic_id": coordinator.statistic_id,
@@ -34,6 +55,9 @@ async def async_get_config_entry_diagnostics(
                 coordinator.data.last_imported_day.isoformat()
                 if coordinator.data and coordinator.data.last_imported_day
                 else None
+            ),
+            "imported_samples": (
+                coordinator.data.imported_samples if coordinator.data else 0
             ),
         },
     }
