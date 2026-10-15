@@ -15,7 +15,7 @@ from homeassistant.helpers.config_entry_oauth2_flow import (
     LocalOAuth2ImplementationWithPkce,
 )
 
-from .const import OAUTH_CLIENT_SECRET, OIDC_DISCOVERY_URL
+from .const import DOMAIN, OAUTH_CLIENT_ID, OAUTH_CLIENT_SECRET, OIDC_DISCOVERY_URL
 
 
 async def _async_get_discovery(hass: HomeAssistant) -> dict[str, Any]:
@@ -30,7 +30,7 @@ async def _async_get_discovery(hass: HomeAssistant) -> dict[str, Any]:
 
 
 async def async_get_authorization_server(hass: HomeAssistant) -> AuthorizationServer:
-    """Return the authorization and token endpoints from OIDC discovery."""
+    """Return authorization and token endpoints from OIDC discovery."""
     data = await _async_get_discovery(hass)
     authorize_url = data.get("authorization_endpoint")
     token_url = data.get("token_endpoint")
@@ -42,12 +42,28 @@ async def async_get_authorization_server(hass: HomeAssistant) -> AuthorizationSe
     )
 
 
+async def async_get_fixed_implementation(
+    hass: HomeAssistant,
+) -> AbstractOAuth2Implementation:
+    """Return the public PKCE client used by the IBC customer portal."""
+    server = await async_get_authorization_server(hass)
+    return LocalOAuth2ImplementationWithPkce(
+        hass,
+        DOMAIN,
+        OAUTH_CLIENT_ID,
+        authorize_url=server.authorize_url,
+        token_url=server.token_url,
+        client_secret=OAUTH_CLIENT_SECRET,
+        code_verifier_length=128,
+    )
+
+
 async def async_get_auth_implementation(
     hass: HomeAssistant,
     auth_domain: str,
     credential: ClientCredential,
 ) -> AbstractOAuth2Implementation:
-    """Return the IBC OAuth2 implementation using Authorization Code + PKCE."""
+    """Return an IBC OAuth2 implementation for optional custom credentials."""
     server = await async_get_authorization_server(hass)
     return LocalOAuth2ImplementationWithPkce(
         hass,
@@ -55,6 +71,6 @@ async def async_get_auth_implementation(
         credential.client_id,
         authorize_url=server.authorize_url,
         token_url=server.token_url,
-        client_secret=credential.client_secret or OAUTH_CLIENT_SECRET,
+        client_secret=credential.client_secret,
         code_verifier_length=128,
     )
