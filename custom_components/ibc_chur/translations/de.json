@@ -4,7 +4,7 @@
     "step": {
       "user": {
         "title": "IBC Kundenportal anmelden",
-        "description": "Melde dich mit deinem normalen IBC-Kundenportal-Konto an. Das Passwort wird nur für die Anmeldung verwendet und nicht gespeichert. Danach speichert Home Assistant ausschliesslich die OAuth-Tokens und erneuert sie automatisch.",
+        "description": "Melde dich mit deinem normalen IBC-Kundenportal-Konto an. Home Assistant verwendet denselben OAuth-2.0-/PKCE-Anmeldeablauf wie das IBC-Portal. Das Passwort wird nur während dieser Anmeldung verwendet und nicht gespeichert. Danach werden Access- und Refresh-Token automatisch verwaltet.",
         "data": {
           "username": "Benutzername / E-Mail",
           "password": "Passwort"
@@ -12,45 +12,38 @@
       },
       "subject": {
         "title": "IBC Kundenzuordnung",
-        "description": "Die Anmeldung war erfolgreich. Das Portal hat die interne Subject-ID nicht eindeutig geliefert. Trage sie einmalig ein; alle weiteren Objekte, Medien und Messpunkte werden automatisch ermittelt.",
+        "description": "Die Anmeldung war erfolgreich, aber dieses Konto liefert ausnahmsweise keine eindeutige interne Kundenzuordnung im Token. Trage die Subject-ID einmalig ein. Objekte, Rollen, Medien und Messpunkte werden danach automatisch ermittelt.",
         "data": {
           "subject_id": "Subject-ID"
         },
         "data_description": {
-          "subject_id": "Interne IBC/EBP-Subject-ID, beispielsweise aus einem Portal-Request wie objects?subject_id=..."
+          "subject_id": "Interne IBC/EBP-Subject-ID. Bei normalen Konten wird dieser Schritt automatisch übersprungen."
         }
       },
       "subject_select": {
         "title": "IBC Kundenzuordnung auswählen",
-        "description": "Es wurden mehrere Subject-IDs gefunden. Wähle die gewünschte Kundenzuordnung.",
+        "description": "Das IBC-Konto enthält mehrere Kundenzuordnungen. Wähle die gewünschte Zuordnung.",
         "data": {
-          "subject_id": "Subject-ID"
-        }
-      },
-      "role": {
-        "title": "IBC Rolle auswählen",
-        "description": "Für dieses Subject wurden mehrere Rollen gefunden.",
-        "data": {
-          "role": "Rolle"
+          "subject_id": "Kundenzuordnung"
         }
       },
       "object": {
         "title": "Versorgungsobjekt auswählen",
-        "description": "Wähle die Liegenschaft bzw. den Anschluss, dessen Verbrauch in Home Assistant eingebunden werden soll.",
+        "description": "Wähle die Liegenschaft bzw. den Anschluss. Die zum Objekt gehörende IBC-Rolle wird automatisch übernommen.",
         "data": {
           "object_id": "Objekt"
         }
       },
       "meteringpoint": {
         "title": "Messpunkt auswählen",
-        "description": "Wähle den gewünschten IBC-Messpunkt. Verfügbare Medienkategorien werden automatisch abgefragt.",
+        "description": "Wähle den gewünschten Messpunkt. Verfügbare Medien und die passende Lastgang-Aggregation wurden automatisch aus der IBC-Konfiguration ermittelt.",
         "data": {
           "meteringpoint": "Messpunkt"
         }
       },
       "reauth_confirm": {
         "title": "IBC erneut anmelden",
-        "description": "Der gespeicherte Refresh-Token ist nicht mehr gültig. Melde dich erneut mit deinem IBC-Kundenportal-Konto an; das Passwort wird nicht gespeichert.",
+        "description": "Die IBC-Anmeldesitzung ist abgelaufen. Melde dich erneut an. Das Passwort wird nicht gespeichert.",
         "data": {
           "username": "Benutzername / E-Mail",
           "password": "Passwort"
@@ -59,23 +52,23 @@
     },
     "error": {
       "invalid_auth": "Benutzername oder Passwort wurden von IBC abgelehnt.",
-      "auth_unsupported": "Der IBC-Anmeldedienst verlangt einen zusätzlichen oder derzeit nicht automatisch unterstützten Schritt. Details stehen im Home-Assistant-Protokoll.",
-      "subject_not_found": "Die Subject-ID konnte mit diesem IBC-Konto nicht abgefragt werden.",
-      "cannot_connect": "IBC Login bzw. Kundenportal konnte nicht erreicht werden.",
+      "auth_unsupported": "IBC verlangt einen zusätzlichen Anmeldeschritt, der derzeit nicht automatisch verarbeitet werden kann. Details stehen im Home-Assistant-Protokoll.",
+      "subject_not_found": "Die Kundenzuordnung konnte mit diesem IBC-Konto nicht abgefragt werden.",
+      "cannot_connect": "IBC Login bzw. Kundenportal konnte nicht erreicht oder abgefragt werden.",
       "unknown": "Unerwarteter Fehler. Details stehen im Home-Assistant-Protokoll."
     },
     "abort": {
       "already_configured": "Dieser IBC-Messpunkt ist bereits eingerichtet.",
       "reauth_successful": "IBC wurde erfolgreich erneut authentifiziert.",
-      "no_objects": "Für dieses IBC-Subject wurden keine Versorgungsobjekte gefunden.",
-      "no_meteringpoints": "Für das ausgewählte Objekt wurden keine Messpunkte gefunden."
+      "no_objects": "Für dieses IBC-Konto wurden keine aktiven Versorgungsobjekte gefunden.",
+      "no_meteringpoints": "Für das ausgewählte Objekt wurden keine aktiven Lastgang-Messpunkte gefunden."
     }
   },
   "options": {
     "step": {
       "init": {
         "title": "IBC Einstellungen",
-        "description": "Lege fest, wie weit die IBC-15-Minuten-Werte beim ersten bzw. nächsten Nachladen rückwirkend importiert werden sollen.",
+        "description": "Lege fest, wie weit die IBC-15-Minuten-Werte rückwirkend in die Home-Assistant-Langzeitstatistik importiert werden sollen.",
         "data": {
           "history_days": "Historie importieren (Tage)"
         }
@@ -85,8 +78,12 @@
   "entity": {
     "sensor": {
       "latest_power": {"name": "Letzte 15-Minuten-Leistung"},
+      "latest_day_energy": {"name": "Verbrauch letzter verfügbarer Tag"},
       "yesterday_energy": {"name": "Verbrauch gestern"},
-      "last_measurement": {"name": "Letzte Messung"}
+      "last_7_days_energy": {"name": "Verbrauch letzte 7 Tage"},
+      "month_energy": {"name": "Verbrauch laufender Monat"},
+      "last_measurement": {"name": "Letzte Messung"},
+      "data_age": {"name": "Datenalter"}
     }
   }
 }
