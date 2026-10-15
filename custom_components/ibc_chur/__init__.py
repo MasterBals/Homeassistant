@@ -78,6 +78,7 @@ async def async_setup_entry(hass: HomeAssistant, entry: IBCConfigEntry) -> bool:
     if token_manager is not None:
 
         async def _async_keep_token_alive(_now) -> None:
+            """Rotate the short-lived IBC refresh session in the background."""
             try:
                 await token_manager.async_force_refresh()
             except IBCInvalidAuth:
@@ -96,10 +97,15 @@ async def async_setup_entry(hass: HomeAssistant, entry: IBCConfigEntry) -> bool:
 
     await hass.config_entries.async_forward_entry_setups(entry, PLATFORMS)
 
+    # Register the delayed, correctly timestamped hourly consumption and its
+    # consumption-dependent CHF cost statistic in the Energy dashboard. Earlier
+    # IBC statistics are migrated automatically; unrelated grid sources are not
+    # touched so double counting cannot be introduced silently.
     try:
         status = await async_ensure_energy_dashboard_source(
             hass,
             coordinator.statistic_id,
+            cost_statistic_id=coordinator.cost_statistic_id,
             name="IBC Stromnetz",
         )
         _LOGGER.debug("IBC Energy dashboard configuration status: %s", status)
