@@ -3,10 +3,10 @@
 from __future__ import annotations
 
 import base64
-from collections.abc import Mapping
 import json
 import logging
 import re
+from collections.abc import Mapping
 from typing import Any
 
 import voluptuous as vol
